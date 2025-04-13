@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <style>
+        :root {
+            --national-color: #0b755d; /* Darker green */
+            --regional-color:#2d3748; /* Darker blue-gray */
+            --district-color:#2d3748; /* Darker purple */
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #f4f4f9, #e8e8e8);
+            color: #333;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+
+        .login-options {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .login-options a {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .login-options a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .national {
+            background-color: var(--national-color);
+        }
+
+        .national:hover {
+            background-color: #0d8c6d; /* Slightly lighter for hover */
+        }
+
+        .regional {
+            background-color: var(--regional-color);
+        }
+
+        .regional:hover {
+            background-color: #3a5870; /* Slightly lighter for hover */
+        }
+
+        .district {
+            background-color: var(--district-color);
+        }
+
+        .district:hover {
+            background-color: #3a5870; /* Slightly lighter for hover */
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5em; /* Slightly smaller title */
+                margin-bottom: 1.5rem;
+            }
+
+            .login-options {
+                flex-direction: column;
+                gap: 0.75rem; /* Reduce spacing between buttons */
+            }
+
+            .login-options a {
+                padding: 0.5rem 1rem; /* Smaller padding */
+                font-size: 0.9em; /* Slightly smaller font */
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.25em; /* Smaller title for very small screens */
+                margin-bottom: 1rem;
+            }
+
+            .login-options a {
+                padding: 0.5rem 0.8rem; /* Further reduce padding */
+                font-size: 0.8em; /* Smaller font for buttons */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Preparedness Evaluation System</h1>
+    <div class="login-options">
+        <a href="{% url 'national_login' %}" class="national">National Level Login</a>
+        <a href="{% url 'regional_login' %}" class="regional">Regional Level Login</a>
+        <a href="{% url 'place_login' %}" class="district">District Level Login</a>
+    </div>
+</body>
+</html>

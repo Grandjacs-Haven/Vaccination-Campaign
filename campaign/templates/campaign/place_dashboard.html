@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ request.user.place.name }} Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="h-full">
+    <div class="min-h-full flex">
+        <nav class="bg-white w-64 flex-shrink-0 border-r border-gray-200">
+            <div class="h-full flex flex-col">
+                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+                    <div class="flex items-center flex-shrink-0 px-4">
+                        <span class="text-xl font-bold text-gray-900">{{ request.user.place.name }} Dashboard</span>
+                    </div>
+                    <nav class="mt-5 flex-1 px-2 space-y-1">
+                        <a href="{% url 'export_csv' %}" class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-800 hover:text-white">
+                            <i class="fas fa-file-export nav-icon mr-3 text-gray-400 group-hover:text-white"></i>
+                            Export Data as CSV
+                        </a>
+                        <a href="{% url 'logout' %}" class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-800 hover:text-white">
+                            <i class="fas fa-sign-out-alt nav-icon mr-3 text-gray-400 group-hover:text-white"></i>
+                            Logout
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex-1 overflow-auto bg-gray-100">
+            <div class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
+                <header class="bg-white shadow-sm rounded-lg mb-6">
+                    <div class="max-w-8xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">{{ campaign_name }}</h1>
+                        <p class="text-lg font-medium text-gray-600">Welcome, {{ request.user.get_full_name|default:request.user.username }}</p>
+                    </div>
+                </header>
+
+                {% if campaign %}
+                    <div class="dashboard-grid mb-8">
+                        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200">
+                            <div class="px-4 py-5 sm:p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Campaign Details</h3>
+                                <p class="text-gray-700">Round {{ campaign.round_number }}</p>
+                                <p class="text-gray-700">Type of Vaccine: {{ campaign.type_of_vaccine }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% for thematic_area, data in place_data.items %}
+                        <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 mb-8">
+                            <h3 class="text-lg font-medium text-gray-900 bg-gray-200 px-4 py-3">{{ thematic_area.name }}</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-300">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-gray-900">Activities Planned</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-gray-900">Timeline Before SIA</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-gray-900">Scale</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for activity_data in data.activities %}
+                                            <tr>
+                                                <td class="py-4 px-4 text-sm font-medium text-gray-900">{{ activity_data.activity.name }}</td>
+                                                <td class="px-4 py-4 text-sm text-gray-500">
+                                                    <form id="timeline_form_{{ activity_data.activity.id }}" onsubmit="updateTimeline('{{ activity_data.activity.id }}'); return false;">
+                                                        {% csrf_token %}
+                                                        <select name="timeline_before_sia" onchange="updateTimeline('{{ activity_data.activity.id }}')" class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 py-2 px-3 text-sm text-gray-700 focus:border-gray-600 focus:ring-gray-600">
+                                                            <option value="8 weeks" {% if activity_data.timeline == "8 weeks" %}selected{% endif %}>8 weeks</option>
+                                                            <option value="4 weeks" {% if activity_data.timeline == "4 weeks" %}selected{% endif %}>4 weeks</option>
+                                                            <option value="2 weeks" {% if activity_data.timeline == "2 weeks" %}selected{% endif %}>2 weeks</option>
+                                                            <option value="1 week" {% if activity_data.timeline == "1 week" %}selected{% endif %}>1 week</option>
+                                                        </select>
+                                                    </form>
+                                                </td>
+                                                <td class="px-4 py-4 text-sm text-gray-500">
+                                                    <form id="form_{{ activity_data.activity.id }}" onsubmit="updateStatus('{{ activity_data.activity.id }}'); return false;" class="flex items-center space-x-2">
+                                                        {% csrf_token %}
+                                                        <input type="number" name="scale" value="{{ activity_data.scale }}" min="0" max="10" step="5" class="w-16 px-2 py-1 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-600 text-sm" required>
+                                                        <button type="submit" class="px-2 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors">Save</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-xl text-gray-700 text-center">There is currently no active campaign.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

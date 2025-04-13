@@ -1,0 +1,162 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Create New Campaign{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* Styling for the campaign creation form */
+        .campaign-form {
+            width: 70%;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        .campaign-form h2 {
+            text-align: center;
+        }
+        .campaign-form label {
+            display: block;
+            margin-top: 10px;
+        }
+        .campaign-form input[type="text"],
+        .campaign-form input[type="date"],
+        .campaign-form input[type="number"],
+        .campaign-form textarea {
+            width: 95%;
+            padding: 5px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        /* Button styles */
+        .select-places-btn {
+            background-color: #1b6d3a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .select-places-btn:hover {
+            background-color: #155b31;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .button-container button {
+            background-color: rgba(10, 50, 43, 1);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .button-container button:hover {
+            background-color: rgba(15, 70, 60, 1);
+        }
+
+        /* Cancel button style */
+        .button-container .cancel-button {
+    background-color: #f44336;
+    margin-left: 10px;
+}
+.button-container .cancel-button:hover {
+    background-color: #d32f2f;
+}
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="campaign-form">
+        <h2>Create New Campaign</h2>
+        <form id="createCampaignForm" method="post">
+            {% csrf_token %}
+            
+            <label for="country">Country:</label>
+            <input type="text" name="country" value="{{ campaign_form_data.country }}" required>
+
+            <label for="name">Campaign Name:</label>
+            <input type="text" name="name" value="{{ campaign_form_data.name }}" required>
+            
+            <label for="sia_start_date">SIA Start Date:</label>
+            <input type="date" name="sia_start_date" value="{{ campaign_form_data.sia_start_date }}" required>
+             
+            <label for="type_of_vaccine">Type of Vaccine:</label>
+            <input type="text" name="type_of_vaccine" value="{{ campaign_form_data.type_of_vaccine }}" required>
+            
+            <label for="round_number">Round Number:</label>
+            <input type="text" name="round_number" value="{{ campaign_form_data.round_number }}" required>
+            
+            <button type="submit" name="action" value="select_places" class="select-places-btn">Select Districts for Campaign</button>
+
+            <p><strong>Number of Districts Selected:</strong> {{ number_of_districts }}</p>
+            
+            <label for="is_active">Active:</label>
+            <input type="checkbox" name="is_active" {% if campaign_form_data.is_active %}checked{% endif %}>
+
+            <div class="button-container">
+                <button type="button" onclick="submitForm()" class="create-button">Create Campaign</button>
+                <button type="button" onclick="cancelCreation()" class="cancel-button">Cancel</button>
+            </div>            
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function submitForm() {
+            // Submit the form via AJAX to avoid a page reload
+            const form = document.getElementById('createCampaignForm');
+            const formData = new FormData(form);
+            formData.append('action', 'create_campaign');
+
+            fetch("{% url 'manage_campaigns' %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRFToken": formData.get("csrfmiddlewaretoken"),
+                },
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Show the SweetAlert success popup
+                    Swal.fire({
+                        title: 'Campaign Created Successfully!',
+                        icon: 'success',
+                        confirmButtonText: 'Okay'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Redirect to manage campaigns page
+                            window.location.href = "{% url 'manage_campaigns' %}";
+                        }
+                    });
+                } else {
+                    throw new Error('Campaign creation failed.');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'There was an issue creating the campaign.',
+                    icon: 'error',
+                });
+            });
+        }
+
+        function cancelCreation() {
+            // Clear session data and redirect to manage campaigns
+            window.location.href = "{% url 'manage_campaigns' %}?action=clear_session";
+        }
+    </script>
+{% endblock %}
+

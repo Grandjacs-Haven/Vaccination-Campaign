@@ -1,0 +1,212 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Edit Thematic Area{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', function () {
+                const activityId = this.getAttribute('data-id');
+                const row = this.closest('tr');
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "Do you want to delete this activity?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        row.style.display = 'none';
+
+                        const deleteListInput = document.getElementById('delete_list');
+                        const currentDeleteList = deleteListInput.value ? deleteListInput.value.split(',') : [];
+                        currentDeleteList.push(activityId);
+                        deleteListInput.value = currentDeleteList.join(',');
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    .thematic-area-form {
+        width: 100%;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 0 15px;
+    }
+    .thematic-area-form h2 {
+        text-align: center;
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    .thematic-area-form form {
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .form-group input[type="text"],
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    .form-group input[type="text"]:focus,
+    .form-group select:focus {
+        border-color: #3085d6;
+        outline: none;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        border: 1px solid #e0e0e0;
+        padding: 10px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        color: #333;
+    }
+    .save-button,
+    .delete-button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 1em;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+    .save-button {
+        background-color: rgba(10, 50, 43, 1);
+        color: white;
+        border: none;
+    }
+    .save-button:hover {
+        background-color: rgba(15, 70, 60, 1);
+    }
+    .delete-button {
+        background-color: #FF6347;
+        color: white;
+        border: none;
+    }
+    .delete-button:hover {
+        background-color: #ff4f2b;
+    }
+
+    /* Media Queries for Responsive Design */
+    @media screen and (max-width: 768px) {
+        .thematic-area-form {
+            margin: 30px auto;
+        }
+        .thematic-area-form form {
+            padding: 15px;
+        }
+        .form-group input[type="text"],
+        .form-group select {
+            padding: 8px;
+        }
+        table {
+            font-size: 0.9em;
+        }
+        th, td {
+            padding: 8px;
+        }
+    }
+
+    @media screen and (max-width: 480px) {
+        .thematic-area-form h2 {
+            font-size: 1.2em;
+        }
+        table {
+            font-size: 0.8em;
+        }
+        th, td {
+            padding: 6px;
+        }
+        .save-button,
+        .delete-button {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="thematic-area-form">
+    <h2>Edit Thematic Area</h2>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_name">Name:</label>
+            {{ thematic_area_form.name }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_level">Level:</label>
+            {{ thematic_area_form.level }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_campaign">Campaign:</label>
+            {{ thematic_area_form.campaign }}
+        </div>
+
+        <!-- Hidden input to track deleted activities -->
+        <input type="hidden" name="delete_list" id="delete_list" value="">
+
+        <!-- Editable Activities List -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Activies</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities %}
+                <tr>
+                    <td>
+                        <!-- Input field to edit activity name -->
+                        <input type="text" name="activity_name_{{ activity.id }}" value="{{ activity.name }}" required>
+                    </td>
+                    <td>
+                        <!-- Delete button for each activity with confirmation -->
+                        <button type="button" class="delete-button" data-id="{{ activity.id }}">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Save All Changes Button -->
+        <button type="submit" class="save-button">Save All Changes</button>
+    </form>
+</div>
+{% endblock %}

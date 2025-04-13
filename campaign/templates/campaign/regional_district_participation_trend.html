@@ -1,0 +1,140 @@
+{% extends "campaign/base2.html" %}
+
+{% block title %}Regional District Participation Trend{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .content-container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            margin: 0 auto;
+            display: block;
+            max-width: 100%;
+            height: 700px;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="content-container">
+      
+        <a href="{% url 'regional_trend_selection' %}" class="back-button">Back to Trends Selection</a>
+        <canvas id="districtParticipationChart"></canvas>
+    </div>
+
+    <script>
+        const trendLabels = JSON.parse('{{ trend_labels|escapejs }}');
+        let trendData = JSON.parse('{{ trend_data|escapejs }}');
+        const bracketIndices = JSON.parse('{{ bracket_indices|escapejs }}');
+        const maxDistricts = {{ max_districts }}; 
+    
+     
+        trendData = trendData.map(value => Math.min(value, maxDistricts));
+    
+       
+        const extraTickValue = maxDistricts + 1;
+    
+        const ctx = document.getElementById('districtParticipationChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 71}, (_, i) => 70 - i),
+                datasets: [{
+                    label: 'Participating Districts',
+                    data: trendData,
+                    borderColor: '#2d3748',
+                    backgroundColor: 'rgba(107, 114, 128, 0)', 
+                    fill: false,
+                    tension: 0.3,
+                    pointBackgroundColor: '#2d3748',
+                    pointRadius: 2,
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Timeline before SIA',
+                            color: '#1f2937',
+                        },
+                        ticks: {
+                            color: '#1f2937',
+                            callback: function(value, index) {
+                                return bracketIndices.includes(index) ? trendLabels[bracketIndices.indexOf(index)] : '';
+                            },
+                            maxRotation: 0,
+                            autoSkip: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: extraTickValue, 
+                        ticks: {
+                            stepSize: 1,
+                            color: '#1f2937',
+                            callback: function(value) {
+                                if (value === maxDistricts) return `${maxDistricts}`; 
+                                if (value > maxDistricts) return ''; 
+                                return Number.isInteger(value) ? value : ''; 
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Participating Districts',
+                            color: '#1f2937'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                return `${context.dataset.label}: ${value >= maxDistricts ? maxDistricts + '+' : value} districts`;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+    
+{% endblock %}

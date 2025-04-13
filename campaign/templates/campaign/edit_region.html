@@ -1,0 +1,167 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Edit Region{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', function () {
+                const placeId = this.getAttribute('data-id');
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "Do you want to delete this District?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '';  // Adjust action if needed
+
+                        const csrfToken = document.createElement('input');
+                        csrfToken.type = 'hidden';
+                        csrfToken.name = 'csrfmiddlewaretoken';
+                        csrfToken.value = '{{ csrf_token }}';
+                        form.appendChild(csrfToken);
+
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = `delete_place_${placeId}`;
+                        input.value = placeId;
+                        form.appendChild(input);
+
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    .form-container {
+        width: 600px;
+        margin: 50px auto;
+    }
+    .form-container h2 {
+        text-align: center;
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    .form-container form {
+        border: 1px solid #ccc;
+        padding: 30px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .form-group input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    .save-button {
+        background-color: rgba(10, 50, 43, 1);
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 20px;
+        width: 100%;
+        font-size: 1em;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+    .save-button:hover {
+        background-color: rgba(15, 70, 60, 1);
+    }
+    .delete-button {
+        background-color: #FF6347;
+        color: white;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: opacity 0.3s ease;
+    }
+    .delete-button:hover {
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Edit Region</h2>
+
+    <!-- Form for editing the region and places -->
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Edit Region Name -->
+        <div class="form-group">
+            <label for="region_name">Region Name:</label>
+            <input type="text" id="region_name" name="region_name" value="{{ region.name }}" required>
+        </div>
+
+        <!-- Table for Editing Places -->
+        <h3>Places</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Districts</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for place in places %}
+                <tr>
+                    <td>
+                        <!-- Input field for editing place name -->
+                        <input type="text" name="place_name_{{ place.id }}" value="{{ place.name }}" required>
+                    </td>
+                    <td>
+                        <!-- Delete button with data-id for the place ID -->
+                        <button type="button" class="delete-button" data-id="{{ place.id }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Save All Changes Button -->
+        <button type="submit" class="save-button">Save All Changes</button>
+    </form>
+</div>
+{% endblock %}

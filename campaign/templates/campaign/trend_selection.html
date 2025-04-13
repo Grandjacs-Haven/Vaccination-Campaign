@@ -1,0 +1,47 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Select Trend View{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .content-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        h1 {
+            color: rgba(10, 50, 43, 1);
+            font-size: 1.8em;
+            margin-bottom: 30px;
+        }
+
+        .button-link {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            background-color: rgba(10, 50, 43, 1);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+            display: inline-block;
+        }
+
+        .button-link:hover {
+            background-color: rgba(15, 70, 60, 1);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <h1>Select a Trend View</h1>
+    <div style="margin-top: 30px;">
+        <a href="{% url 'activity_trend' %}" class="button-link">District Entries</a>
+        <a href="{% url 'district_trends' %}" class="button-link">Cumulative District Activity</a>
+    </div>
+</div>
+{% endblock %}

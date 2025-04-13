@@ -1,0 +1,134 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Add Activity{% endblock %}
+
+{% block extra_head %}
+<style>
+    .activity-form {
+        width: 600px;
+        margin: 50px auto;
+    }
+    .activity-form h2 {
+        text-align: center;
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    .activity-form form {
+        border: 1px solid #ccc;
+        padding: 30px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    .submit-button {
+        background-color: rgba(10, 50, 43, 1);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 100%;
+        font-size: 1em;
+        font-weight: bold;
+    }
+    .submit-button:hover {
+        background-color: rgba(15, 70, 60, 1);
+    }
+    .back-link {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        .activity-form {
+            width: 90%;
+            margin: 20px auto;
+        }
+        .activity-form h2 {
+            font-size: 1.3em;
+        }
+        .activity-form form {
+            padding: 20px 15px;
+        }
+        .form-group input[type="text"],
+        .form-group select,
+        .form-group textarea {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+        .submit-button {
+            font-size: 0.9em;
+            padding: 8px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .activity-form {
+            width: 100%;
+            margin: 20px auto;
+        }
+        .activity-form h2 {
+            font-size: 1.2em;
+        }
+        .activity-form form {
+            padding: 15px 10px;
+        }
+        .form-group input[type="text"],
+        .form-group select,
+        .form-group textarea {
+            font-size: 0.8em;
+            padding: 7px;
+        }
+        .submit-button {
+            font-size: 0.8em;
+            padding: 7px;
+        }
+        .back-link a {
+            font-size: 0.9em;
+        }
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="activity-form">
+    <h2>Add Activity to {{ thematic_area.name }}</h2>
+    
+    <!-- Form for Adding New Activity -->
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ form.as_p }}
+        </div>
+        <!-- Submit Button -->
+        <div>
+            <button type="submit" class="submit-button">Add</button>
+        </div>
+    </form>
+</div>
+
+<!-- Back to Thematic Areas Link -->
+<div class="back-link">
+    <a href="{% url 'manage_thematic_areas' %}?level={{ level_filter }}&thematic_area={{ thematic_area_filter }}" class="text-blue-600 hover:text-blue-800">Back to Thematic Areas</a>
+</div>
+{% endblock %}

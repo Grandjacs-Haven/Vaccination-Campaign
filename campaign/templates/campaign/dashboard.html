@@ -1,0 +1,549 @@
+{% extends "campaign/base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+    Readiness Assesment
+{% endblock %}
+
+{% block extra_head %}
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+
+  
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .custom-border {
+        border-color: rgba(10,50,43,0.2);
+    }
+    .chart-center-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #374151;
+    }
+    .header-title {
+        padding: 1rem;
+    }
+
+    
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1F2937;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    .card {
+        background-color: #fff;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 500;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #E5E7EB;
+    }
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    .list-item .name {
+        color: #374151;
+    }
+    .list-item .percentage {
+        font-weight: 600;
+        color: #10B981;
+    }
+    .list-item.least-ready .percentage {
+        color: #EF4444;
+    }
+
+    
+    @media (max-width: 768px) {
+        .max-w-7xl {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        .chart-container {
+            height: 250px;
+        }
+        .section-title {
+            font-size: 1.5rem;
+        }
+        .card {
+            padding: 1rem;
+        }
+        .text-3xl {
+            font-size: 1.5rem;
+        }
+        .text-2xl {
+            font-size: 1.25rem;
+        }
+        .text-xl {
+            font-size: 1rem;
+        }
+        .text-lg {
+            font-size: 0.875rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .chart-container {
+            height: 200px;
+        }
+        .section-title {
+            font-size: 1.25rem;
+        }
+        .text-3xl {
+            font-size: 1.25rem;
+        }
+        .text-2xl {
+            font-size: 1rem;
+        }
+        .text-xl {
+            font-size: 0.875rem;
+        }
+        .text-lg {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold text-gray-900">{{ campaign_name }}</h1>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+
+    <div class="flex justify-between items-center bg-gray-100 p-4 rounded mb-6">
+
+        <p class="text-lg font-semibold text-gray-700">
+            Date of Update: {{ current_date }}
+        </p>
+
+        <p class="text-lg font-semibold text-gray-700">
+            Round: {{ round_number }}
+        </p>
+
+        <p class="text-lg font-semibold text-gray-700">
+            Days to Campaign: 
+            {% if days_to_campaign != None %}
+                {{ days_to_campaign }}
+            {% else %}
+                Not applicable
+            {% endif %}
+        </p>
+
+        <a href="{% url 'dashboard_pdf' %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Download PDF Report
+        </a>
+        
+    </div>
+      
+    <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">National Preparedness</h2>
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+       
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Thematic Areas Status</h2>
+                <div class="chart-container">
+                    <canvas id="thematicBarChartNational"></canvas>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6 relative">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Status of Preparedness</h2>
+                <div class="chart-container">
+                    <canvas id="circularChartNational"></canvas>
+                    <div id="circularPercentageNational" class="chart-center-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Overall Regional Preparedness</h2>
+    {% if campaign %}
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      
+        <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Overall Preparedness</h3>
+            <div class="chart-container">
+                <canvas id="overallReadinessChart"></canvas>
+            </div>
+        </div>
+
+     
+        <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Thematic Area Readiness Across Regions</h3>
+            <div class="chart-container">
+                <canvas id="thematicChartRegional"></canvas>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="mb-8 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 custom-border">
+        <h3 class="text-lg font-medium text-gray-900 bg-gray-200 px-4 py-3 border-b">Regional Preparedness</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-300">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900 border-r">Region</th>
+                        {% for thematic_area in thematic_area_names %}
+                            <th class="px-4 py-2 text-center text-sm font-semibold text-gray-900 border-r">
+                                {{ thematic_area }}
+                            </th>
+                        {% endfor %}
+                        <th class="px-4 py-2 text-center text-sm font-semibold text-gray-900">Preparedness (%)</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for entry in regional_readiness_with_thematics %}
+                        <tr>
+                            <td class="px-4 py-2 text-sm font-semibold text-gray-900 border-r">{{ entry.region }}</td>
+                            {% for thematic_area in thematic_area_names %}
+                                <td class="px-4 py-2 text-sm text-center font-semibold border-r">
+                                    <span class="{% if entry.thematic_scores|get_item:thematic_area >= 70 %}text-green-600{% elif entry.thematic_scores|get_item:thematic_area >= 40 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                        {{ entry.thematic_scores|get_item:thematic_area }}%
+                                    </span>
+                                </td>
+                            {% endfor %}
+                            <td class="px-4 py-2 text-sm text-center font-semibold text-gray-900">
+                                {{ entry.preparedness }}%
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    
+    
+    {% else %}
+        <p class="text-xl text-gray-700 text-center">There is currently no active campaign.</p>
+    {% endif %}
+
+    <div class="section-title">Most and Least Ready Regions</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div class="card">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Top Regions (score of 70% and above)</h2>
+            <div>
+                {% if  top_regions %}
+                    {% for region in top_regions %}
+                    <div class="mb-2">
+                        <div class="flex justify-between">
+                            <span class="name text-gray-700">{{ region.region }}</span>
+                            <span class="percentage text-gray-700">{{ region.preparedness }}%</span>
+                        </div>
+                        <div class="bg-gray-200 h-4 rounded">
+                            <div class="h-4 bg-green-500 rounded" style="width: {{ region.preparedness }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500">None</p>
+                {% endif %}
+            </div>
+        </div>
+    
+        
+        <div class="card">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Bottom Regions (score of 40% and below)</h2>
+                <div>
+                    {% if  bottom_regions %}
+                        {% for region in bottom_regions %}
+                        <div class="mb-2">
+                            <div class="flex justify-between">
+                                <span class="name text-gray-700">{{ region.region }}</span>
+                                <span class="percentage text-gray-700">{{ region.preparedness }}%</span>
+                            </div>
+                            <div class="bg-gray-200 h-4 rounded">
+                                <div class="h-4 bg-red-500 rounded" style="width: {{ region.preparedness }}%;"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">None</p>
+                    {% endif %}
+                </div>
+        </div>
+    </div>
+    
+    <div class="section-title">Most and Least Ready Districts</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       
+        <div class="card">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Top Districts (score of 70% and above)</h2>
+            <div>
+                {% if  top_places %}
+                    {% for place in top_places %}
+                    <div class="mb-2">
+                        <div class="flex justify-between">
+                            <span class="name text-gray-700">{{ place.place }}</span>
+                            <span class="percentage text-gray-700">{{ place.preparedness }}%</span>
+                        </div>
+                        <div class="bg-gray-200 h-4 rounded">
+                            <div class="h-4 bg-green-500 rounded" style="width: {{ place.preparedness }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500">None</p>
+                {% endif %}
+            </div>
+        </div>
+    
+        
+        <div class="card">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Bottom Districts (score of 40% and below)</h2>
+            <div>
+                {% if  bottom_places %}
+                    {% for place in bottom_places %}
+                    <div class="mb-2">
+                        <div class="flex justify-between">
+                            <span class="name text-gray-700">{{ place.place }}</span>
+                            <span class="percentage text-gray-700">{{ place.preparedness }}%</span>
+                        </div>
+                        <div class="bg-gray-200 h-4 rounded">
+                            <div class="h-4 bg-red-500 rounded" style="width: {{ place.preparedness }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500">None</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    
+    function generateThematicBarChartNational(data) {
+        const ctx = document.getElementById('thematicBarChartNational').getContext('2d');
+        const sortedData = data.labels.map((label, index) => ({
+            label: label,
+            value: data.values[index]
+        })).sort((a, b) => b.value - a.value);
+
+        const sortedLabels = sortedData.map(item => item.label);
+        const sortedValues = sortedData.map(item => item.value);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Status of Implementation (%)',
+                    data: sortedValues,
+                    backgroundColor: '#4169E1',
+                    borderColor: '#4169E1',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: '' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Implementation (%)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (tooltipItem) => tooltipItem.raw + '%' } }
+                }
+            }
+        });
+    }
+    function generateCircularChartNational(percentage) {
+    const ctx = document.getElementById('circularChartNational').getContext('2d');
+
+   
+    const color = percentage > 70 ? '#10B981' : percentage > 40 ? '#F59E0B' : '#EF4444'; // Green, Orange, Red
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Preparedness', 'Remaining'],
+            datasets: [{
+                data: [percentage, 100 - percentage],
+                backgroundColor: [
+                    color, 
+                    '#E5E7EB' 
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false },
+            }
+        }
+    });
+
+    
+    document.getElementById('circularPercentageNational').textContent = percentage + '%';
+}
+
+function generateOverallReadinessChart(overallReadiness) {
+    const ctx = document.getElementById('overallReadinessChart').getContext('2d');
+
+   
+    const color = overallReadiness > 70 ? '#10B981' : overallReadiness > 40 ? '#F59E0B' : '#EF4444';
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Preparedness', 'Remaining'],
+            datasets: [{
+                data: [overallReadiness, 100 - overallReadiness],
+                backgroundColor: [
+                    color, 
+                    '#E5E7EB' 
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false },
+                centerText: {
+                    text: `${overallReadiness}%`, 
+                    fontSize: 24, 
+                    fontColor: '#333', 
+                }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            beforeDraw(chart) {
+                const { width } = chart;
+                const ctx = chart.ctx;
+                const centerX = width / 2;
+                const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                const text = chart.options.plugins.centerText.text;
+                const fontSize = chart.options.plugins.centerText.fontSize;
+                const fontColor = chart.options.plugins.centerText.fontColor;
+
+                ctx.save();
+                ctx.font = `bold ${fontSize}px Arial`; 
+                ctx.fillStyle = fontColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, centerX, centerY);
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+
+
+    function generateThematicBarChartRegional(data) {
+        const ctx = document.getElementById('thematicChartRegional').getContext('2d');
+        const sortedData = data.labels.map((label, index) => ({
+            label: label,
+            value: data.values[index]
+        })).sort((a, b) => b.value - a.value);
+
+        const sortedLabels = sortedData.map(item => item.label);
+        const sortedValues = sortedData.map(item => item.value);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Thematic Area Readiness (%)',
+                    data: sortedValues,
+                    backgroundColor: '#008080',
+                    borderColor: '#008080',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100 },
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (tooltipItem) => `${tooltipItem.raw}%` } }
+                }
+            }
+        });
+    }
+
+    window.onload = function() {
+       
+        const thematicDataNational = {{ thematic_data_national|safe }};
+        const preparednessNational = {{ status_of_preparedness }};
+        generateThematicBarChartNational(thematicDataNational);
+        generateCircularChartNational(preparednessNational);
+
+        
+        const overallReadiness = {{ overall_readiness|default:0 }};
+        const thematicDataRegional = {{ thematic_data_regional|default:"{}"|safe }};
+        generateOverallReadinessChart(overallReadiness);
+        generateThematicBarChartRegional(thematicDataRegional);
+    }
+</script>
+{% endblock %}

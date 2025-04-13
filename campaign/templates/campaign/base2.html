@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+
+<head>
+    <!-- Meta and Title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        {% block title %}
+        {% if request.user.role == 'regional' %}
+        {{ request.user.region.name }} Dashboard
+        {% elif request.user.role == 'place' %}
+        {{ request.user.place.name }} Dashboard
+        {% else %}
+        Dashboard
+        {% endif %}
+        {% endblock %}
+    </title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .nav-link.active {
+            background-color: #1f2937;
+            color: white;
+        }
+
+        .nav-link.active .nav-icon {
+            color: white;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .custom-border {
+            border-color: rgba(10, 50, 43, 0.2);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                bottom: 0;
+                z-index: 1000;
+                transition: left 0.3s ease-in-out;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    {% block extra_head %}
+    {% endblock %}
+</head>
+
+<body class="h-full">
+    <div class="min-h-full flex flex-col md:flex-row">
+        <!-- Mobile menu button -->
+        <button id="mobileMenuButton" class="md:hidden fixed top-4 left-4 z-50 bg-gray-800 text-white p-2 rounded-md">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Left Sidebar -->
+        <nav id="sidebar" class="sidebar bg-white w-64 flex-shrink-0 border-r border-gray-200">
+            <div class="h-full flex flex-col">
+                <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+                    <div class="flex items-center flex-shrink-0 px-4">
+                        <span class="text-xl font-bold text-gray-900">
+                            {% if request.user.role == 'regional' %}
+                            {{ request.user.region.name }} Dashboard
+                            {% elif request.user.role == 'place' %}
+                            {{ request.user.place.name }} Dashboard
+                            {% else %}
+                            Dashboard
+                            {% endif %}
+                        </span>
+                    </div>
+                    <nav class="mt-5 flex-1 px-2 space-y-1">
+                        {% url 'regional_dashboard' as regional_dashboard_url %}
+                        {% url 'regional_trend_selection' as regional_trend_selection_url %}
+                        {% url 'regional_manage_places' as regional_manage_places_url %}
+                        {% url 'readiness_analysis_view' as readiness_analysis_view_url %}
+                        {% url 'export_csv_regional' as export_csv_regional_url %}
+                        {% url 'logout' as logout_url %}
+                        {% if request.user.role == 'place' %}
+                        {% url 'export_csv_place' request.user.place.id as export_csv_place_url %}
+                        {% endif %}
+
+                        {% if request.user.role == 'regional' %}
+
+                        <a href="{{ regional_dashboard_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == regional_dashboard_url %}active{% endif %}">
+                            <i
+                                class="fas fa-th-large nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Dashboard
+                        </a>
+
+
+                        <a href="{{ regional_trend_selection_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == regional_trend_selection_url %}active{% endif %}">
+                            <i
+                                class="fas fa-chart-line nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Trends
+                        </a>
+
+
+                        <a href="{{ regional_manage_places_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == regional_manage_places_url %}active{% endif %}">
+                            <i
+                                class="fas fa-users-cog nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Manage District Users
+                        </a>
+
+
+                        <a href="{{ readiness_analysis_view_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == readiness_analysis_view_url %}active{% endif %}">
+                            <i
+                                class="fas fa-check-circle nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            District Readiness
+                        </a>
+
+
+                        <a href="{{ export_csv_regional_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == export_csv_regional_url %}active{% endif %}">
+                            <i
+                                class="fas fa-file-export nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Export District Data
+                        </a>
+                        {% endif %}
+
+                        {% if request.user.role == 'place' %}
+
+                        <a href="{{ export_csv_place_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == export_csv_place_url %}active{% endif %}">
+                            <i
+                                class="fas fa-file-export nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Export Data
+                        </a>
+                        {% endif %}
+
+
+                        <a href="{{ logout_url }}"
+                            class="nav-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-800 hover:text-white {% if request.path == logout_url %}active{% endif %}">
+                            <i
+                                class="fas fa-sign-out-alt nav-icon mr-3 text-gray-400 group-hover:rotate-12 transition-transform duration-300 group-hover:text-white"></i>
+                            Logout
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </nav>
+
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto bg-gray-100 main-content">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+    <button id="scrollToTopButton"
+        class="fixed bottom-4 right-4 bg-gray-800 text-white p-3 rounded-full shadow-md hover:bg-gray-700 focus:outline-none hidden">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const sidebar = document.getElementById('sidebar');
+
+        mobileMenuButton.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Close sidebar when clicking outside it
+        document.addEventListener('click', (event) => {
+            if (!sidebar.contains(event.target) && !mobileMenuButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        // Scroll-to-Top Button functionality
+        const scrollToTopButton = document.getElementById("scrollToTopButton");
+
+        // Show the button when scrolling down
+        window.addEventListener("scroll", () => {
+            if (window.scrollY > 200) {
+                scrollToTopButton.classList.remove("hidden");
+            } else {
+                scrollToTopButton.classList.add("hidden");
+            }
+        });
+
+        // Scroll to the top when the button is clicked
+        scrollToTopButton.addEventListener("click", () => {
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        });
+    </script>
+</body>
+
+</html>

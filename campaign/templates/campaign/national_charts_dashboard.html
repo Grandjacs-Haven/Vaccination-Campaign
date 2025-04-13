@@ -1,0 +1,154 @@
+{% extends "campaign/base.html" %}
+{% block title %}National Readiness{% endblock %}
+
+{% block extra_head %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .custom-border {
+        border-color: rgba(10,50,43,0.2);
+    }
+    .chart-center-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #374151; /* Gray color for text */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold text-gray-900">{{ campaign_name }}</h1>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">National Readiness Charts</h2>
+
+    <!-- Charts Section -->
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <!-- Thematic Areas Chart -->
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Thematic Areas Status</h2>
+                <div class="chart-container">
+                    <canvas id="thematicBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preparedness Chart -->
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6 relative">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Status of Preparedness</h2>
+                <div class="chart-container">
+                    <canvas id="circularChart"></canvas>
+                    <!-- Percentage Text -->
+                    <div id="circularPercentage" class="chart-center-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function generateThematicBarChart(data) {
+        const ctx = document.getElementById('thematicBarChart').getContext('2d');
+        // Sort data from highest to lowest
+        const sortedData = data.labels.map((label, index) => ({
+            label: label,
+            value: data.values[index]
+        })).sort((a, b) => b.value - a.value);
+
+        const sortedLabels = sortedData.map(item => item.label);
+        const sortedValues = sortedData.map(item => item.value);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Status of Implementation (%)',
+                    data: sortedValues,
+                    backgroundColor: 'rgba(37, 99, 235, 0.8)', /* Blue color */
+                    borderColor: 'rgba(37, 99, 235, 1)', /* Darker blue border */
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Thematic Areas' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Implementation (%)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (tooltipItem) => tooltipItem.raw + '%' } }
+                }
+            }
+        });
+    }
+
+    function generateCircularChart(percentage) {
+        const ctx = document.getElementById('circularChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Preparedness', 'Remaining'],
+                datasets: [{
+                    data: [percentage, 100 - percentage],
+                    backgroundColor: [
+                        percentage > 70 ? '#10B981' : percentage > 40 ? '#F59E0B' : '#EF4444', /* Green, Orange, Red */
+                        '#E5E7EB' /* Light gray for remaining */
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false },
+                }
+            }
+        });
+
+        // Set percentage text in the center of the circular chart
+        document.getElementById('circularPercentage').textContent = percentage + '%';
+    }
+
+    window.onload = function() {
+        const thematicData = {{ thematic_data|safe }};
+        const preparedness = {{ status_of_preparedness }};
+        generateThematicBarChart(thematicData);
+        generateCircularChart(preparedness);
+    }
+</script>
+{% endblock %}

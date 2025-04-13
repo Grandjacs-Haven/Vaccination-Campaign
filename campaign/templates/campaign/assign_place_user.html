@@ -1,0 +1,182 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Assign District User{% endblock %}
+
+{% block extra_head %}
+<style>
+    .user-form {
+        width: 600px;
+        margin: 50px auto;
+    }
+    .user-form h2 {
+        text-align: center;
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    .user-form form {
+        border: 1px solid #ccc;
+        padding: 30px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    .form-group small {
+        display: block;
+        color: #666;
+        margin-top: 5px;
+    }
+    .submit-button {
+        background-color: rgba(10, 50, 43, 1);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 100%;
+        font-size: 1em;
+        font-weight: bold;
+    }
+    .submit-button:hover {
+        background-color: rgba(15, 70, 60, 1);
+    }
+    .form-errors p.error,
+    .form-group p.error {
+        color: #d9534f !important; /* Red for error messages */
+        font-size: 0.9em;
+        margin-top: 5px;
+        font-weight: bold;
+    }
+    .back-link {
+        text-align: center;
+        margin-top: 20px;
+    }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block content %}
+<div class="user-form">
+    <h2>Assign District User to {{ place.name }}</h2>
+
+    <!-- Form to Assign Place User -->
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Display Non-Field Errors -->
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <p class="error">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" name="username" id="username" required value="{{ form.username.value|default_if_none:'' }}">
+            <small>Required. Use 150 characters or fewer, including letters, digits, and @/./+/-/_. No spaces allowed.</small>
+            {% for error in form.username.errors %}
+                <p class="error">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email address:</label>
+            <input type="email" name="email" id="email" required value="{{ form.email.value|default_if_none:'' }}">
+            {% for error in form.email.errors %}
+                <p class="error">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label for="phone_number">Phone number:</label>
+            <input type="text" name="phone_number" id="phone_number" required value="{{ form.phone_number.value|default_if_none:'' }}">
+            {% for error in form.phone_number.errors %}
+                <p class="error">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label for="password1">Password:</label>
+            <input type="password" name="password1" id="password1" required>
+            <small>Your password must contain at least 8 characters and meet complexity requirements.</small>
+            {% for error in form.password1.errors %}
+                <p class="error">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label for="password2">Password confirmation:</label>
+            <input type="password" name="password2" id="password2" required>
+            <small>Enter the same password as before, for verification.</small>
+            {% for error in form.password2.errors %}
+                <p class="error">{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="submit-button">Assign District User</button>
+    </form>
+</div>
+
+<!-- Back to Regions Link -->
+<div class="back-link">
+    <a href="{% url 'manage_regions' %}" class="text-blue-600 hover:text-blue-800">Back to Regions</a>
+</div>
+
+{% if created_user %}
+<script>
+    Swal.fire({
+      title: '<h2 class="text-2xl font-bold mb-4">User Created Successfully!</h2>',
+      html: `
+        <div class="space-y-4">
+          <div class="bg-gray-100 p-4 rounded-lg">
+            <p class="mb-2">
+              <span class="font-semibold text-gray-700">Username:</span> 
+              <span class="font-mono bg-white px-2 py-1 rounded">{{ created_user.username }}</span>
+            </p>
+            <p>
+              <span class="font-semibold text-gray-700">Password:</span> 
+              <span class="font-mono bg-white px-2 py-1 rounded">{{ created_user.password }}</span>
+            </p>
+          </div>
+          <p class="text-blue-600 font-bold text-lg animate-pulse">
+            Please take note of these details!
+          </p>
+        </div>
+      `,
+      icon: 'success',
+      confirmButtonText: 'Okay',
+      confirmButtonColor: '#4CAF50',
+      customClass: {
+        popup: 'rounded-lg shadow-xl',
+        title: 'border-b pb-4 mb-4',
+        confirmButton: 'px-6 py-2 rounded-full transition-all duration-200 ease-in-out hover:bg-green-600'
+      },
+      showCloseButton: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = "{% url 'manage_regions' %}";
+      }
+    });
+</script>
+{% endif %}
+{% endblock %}

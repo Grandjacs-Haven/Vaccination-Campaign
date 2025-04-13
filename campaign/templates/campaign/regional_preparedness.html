@@ -1,0 +1,295 @@
+{% extends "campaign/base.html" %}
+{% load custom_filters %}
+
+{% block title %}Regional Status Update{% endblock %}
+
+{% block extra_head %}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-bg {
+            background-color: rgba(10, 50, 43, 1);
+        }
+        .custom-border {
+            border-color: rgba(10, 50, 43, 0.5);
+        }
+        .table-border {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .max-w-7xl {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            .text-3xl {
+                font-size: 1.5rem;
+            }
+            .text-2xl {
+                font-size: 1.25rem;
+            }
+            .text-xl {
+                font-size: 1rem;
+            }
+            .overflow-x-auto {
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                font-size: 0.75rem;
+            }
+            th, td {
+                padding: 0.5rem 0.25rem;
+            }
+            .flex.items-center.mb-4 {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .flex.items-center.mb-4 > * {
+                margin-bottom: 0.5rem;
+            }
+            .flex.space-x-2 {
+                justify-content: space-between;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .text-3xl {
+                font-size: 1.25rem;
+            }
+            .text-2xl {
+                font-size: 1rem;
+            }
+            .text-xl {
+                font-size: 0.875rem;
+            }
+            table {
+                font-size: 0.675rem;
+            }
+            th, td {
+                padding: 0.25rem 0.125rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Header with Campaign Name -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900">{{ campaign_name }}</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Region Selection -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 text-center mb-4">Select Region</h2>
+            <form method="get" class="flex justify-center items-center space-x-4">
+                <label for="region" class="text-lg font-medium text-gray-700">Region:</label>
+                <select name="region" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    <option value="">-- Select Region --</option>
+                    {% for region in regions %}
+                        <option value="{{ region.id }}" {% if selected_region and selected_region.id == region.id %}selected{% endif %}>
+                            {{ region.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">View</button>
+            </form>
+        </div>
+
+        {% if selected_region %}
+            <!-- Search and Reset Buttons -->
+            <div class="flex items-center mb-4">
+                <input type="text" id="searchInput" placeholder="Search Thematic Area" value="{{ search_term|default:'' }}"
+                       class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600 mr-2">
+                <div class="flex space-x-2">
+                    <button onclick="filterThematicAreas()" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Search</button>
+                    <button onclick="resetThematicAreas()" 
+                            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">Reset</button>
+                </div>
+            </div>
+
+            {% if campaign %}
+                {% if places %}
+                    <!-- Render tables for each thematic area with places -->
+                    {% for thematic_area, activities in regional_data.items %}
+                        <div class="thematic-area-section mb-8" data-thematic-name="{{ thematic_area.name }}">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Thematic Area: {{ thematic_area.name }}</h2>
+                            <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200 custom-border">
+                                <table class="min-w-full divide-y divide-gray-300 table-border">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th rowspan="2" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Activities Planned</th>
+                                            <th rowspan="2" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 border-r">Timeline Before SIA</th>
+                                            <th rowspan="2" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 border-r">Regional Score</th>
+                                            <th colspan="{{ places.count }}" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status of Implementation</th>
+                                        </tr>
+                                        <tr>
+                                            {% for place in places %}
+                                                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{{ place.name }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for activity_data in activities %}
+                                        <tr>
+                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 border-r">{{ activity_data.activity.name }}</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 border-r">  {{ weeks_to_campaign  }} week(s)</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 border-r">{{ activity_data.regional_score }}</td>
+                                            {% for place_data in activity_data.place_data %}
+                                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{{ place_data.scale }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="2" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">TOTAL Implemented (%)</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 border-r">{{ total_completion_percentages|get_item:selected_region.name|get_item:thematic_area.name }}%</td>
+                                            {% for place in places %}
+                                                <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">{{ status_completion|get_item:thematic_area.name|get_item:place.name }}%</td>
+                                            {% endfor %}
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <!-- Status of Completion Table -->
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Status of Completion</h2>
+                    <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200 custom-border mb-8">
+                        <table class="min-w-full divide-y divide-gray-300 table-border">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Thematic Areas</th>
+                                    {% for place in places %}
+                                        <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{{ place.name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for thematic_area_name, place_scores in status_completion.items %}
+                                    <tr>
+                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 border-r">{{ thematic_area_name }}</td>
+                                        {% for place in places %}
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{{ place_scores|get_item:place.name }}%</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">Status of Preparedness</td>
+                                    {% for place in places %}
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">{{ preparedness_status|get_item:place.name }}%</td>
+                                    {% endfor %}
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <!-- Display "N/A" when there are no places in the selected region -->
+                    {% for thematic_area, activities in regional_data.items %}
+                        <div class="thematic-area-section mb-8" data-thematic-name="{{ thematic_area.name }}">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Thematic Area: {{ thematic_area.name }}</h2>
+                            <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200 custom-border">
+                                <table class="min-w-full divide-y divide-gray-300 table-border">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th rowspan="2" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Activities Planned</th>
+                                            <th rowspan="2" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 border-r">Timeline Before SIA</th>
+                                            <th rowspan="2" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Regional Score</th>
+                                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status of Implementation</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">N/A</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for activity_data in activities %}
+                                        <tr>
+                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 border-r">{{ activity_data.activity.name }}</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 border-r">{{ activity_data.timeline }}</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 border-r">N/A</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">N/A</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="2" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">TOTAL Implemented (%)</td>
+                                            <td colspan="2" class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">N/A</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <!-- Status of Completion Table with "N/A" -->
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Status of Completion</h2>
+                    <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200 custom-border mb-8">
+                        <table class="min-w-full divide-y divide-gray-300 table-border">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Thematic Areas</th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">N/A</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for thematic_area_name in status_completion.keys %}
+                                    <tr>
+                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 border-r">{{ thematic_area_name }}</td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">N/A</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">Status of Preparedness</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">N/A</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="text-center text-red-500 text-lg font-semibold">There is currently no active campaign.</p>
+            {% endif %}
+        {% endif %}
+    </main>
+
+    {% block extra_scripts %}
+    <script>
+        function filterThematicAreas() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            document.querySelectorAll(".thematic-area-section").forEach(section => {
+                const areaName = section.getAttribute("data-thematic-name").toLowerCase();
+                if (areaName.includes(searchTerm)) {
+                    section.style.display = "";
+                } else {
+                    section.style.display = "none";
+                }
+            });
+        }
+
+        function resetThematicAreas() {
+            document.getElementById("searchInput").value = "";
+            document.querySelectorAll(".thematic-area-section").forEach(section => {
+                section.style.display = "";
+            });
+        }
+    </script>
+    {% endblock %}
+{% endblock %}

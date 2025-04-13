@@ -1,0 +1,65 @@
+{% extends "campaign/base2.html" %}
+
+{% block title %}Select Trend Type{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .content-container {
+            text-align: center;
+            margin-top: 50px;
+            padding: 0 20px; /* Add padding for smaller screens */
+        }
+
+        h1 {
+            color: #4b5563; /* Gray color for title */
+            font-size: 1.8em;
+            margin-bottom: 30px;
+        }
+
+        .button-link {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            background-color: #2d3748; /* Gray background for buttons */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+            display: inline-block;
+        }
+
+        .button-link:hover {
+            background-color: #4b5563; /* Darker gray on hover */
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5em; /* Slightly smaller title for smaller screens */
+            }
+
+            .content-container {
+                margin-top: 30px; /* Reduce top margin */
+            }
+
+            .button-link {
+                display: block; /* Stack buttons vertically */
+                margin: 10px auto; /* Center buttons with margin on smaller screens */
+                width: 80%; /* Make buttons wider for easier tapping */
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <h1>Select a Trend View</h1>
+    <div style="margin-top: 30px;">
+        <a href="{% url 'regional_activity_trend' %}" class="button-link">District Entries</a>
+        <a href="{% url 'regional_district_participation_trend' %}" class="button-link">Cumulative District Activity</a>
+    </div>
+</div>
+{% endblock %}

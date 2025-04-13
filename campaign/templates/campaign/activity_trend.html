@@ -1,0 +1,227 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}District Activity Trend{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .content-container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: rgba(10, 50, 43, 1);
+            margin-bottom: 20px;
+        }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        label {
+            font-weight: bold;
+            color: rgba(10, 50, 43, 1);
+            margin-right: 5px;
+        }
+
+        select, button[type="submit"], button[type="button"], .back-button {
+            padding: 6px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 0.9em;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        select {
+            background-color: #fff;
+            color: #333;
+        }
+
+        button[type="submit"] {
+            background-color: rgba(10, 50, 43, 1);
+            color: white;
+            font-weight: bold;
+        }
+
+        button[type="button"] {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+
+        .back-button {
+            background-color: #3498db; /* Light blue color */
+            color: white;
+        }
+
+        button[type="submit"]:hover {
+            background-color: rgba(15, 70, 60, 1);
+        }
+
+        button[type="button"]:hover {
+            background-color: #c0c0c0;
+        }
+
+        .back-button:hover {
+            background-color: #2980b9; /* Darker blue on hover */
+        }
+
+        canvas {
+            margin: 0 auto;
+            display: block;
+            max-width: 100%;
+            height: 700px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="content-container">
+        <form method="get" id="filterForm">
+            <!-- Region Dropdown -->
+            <label for="region">Region:</label>
+            <select id="region" name="region" onchange="updatePlacesDropdown()">
+                <option value="" {% if not selected_region %}selected{% endif %}>All Regions</option>
+                {% for region in regions %}
+                    <option value="{{ region.id }}" {% if region.id|stringformat:"s" == selected_region %}selected{% endif %}>{{ region.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Place Dropdown -->
+            <label for="place">District:</label>
+            <select id="place" name="place">
+                <option value="" {% if not selected_place %}selected{% endif %}>All Districts</option>
+                {% for place in places %}
+                    <option value="{{ place.id }}" {% if place.id|stringformat:"s" == selected_place %}selected{% endif %}>{{ place.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Buttons: Apply Filters first, then Reset, and Back to Trends Selection -->
+            <button type="submit">Apply Filters</button>
+            <button type="button" onclick="resetFilters()">Reset</button>
+            <a href="{% url 'trend_selection' %}" class="back-button">Back to Trends Selection</a>
+        </form>
+
+        <canvas id="activityTrendChart"></canvas>
+    </div>
+
+    <script>
+const trendLabels = JSON.parse('{{ trend_labels|escapejs }}');
+let trendData = JSON.parse('{{ trend_data|escapejs }}');
+const bracketIndices = JSON.parse('{{ bracket_indices|escapejs }}');
+
+// Cap the data at 50
+trendData = trendData.map(value => Math.min(value, 50));
+
+// Calculate the maximum value dynamically and add an extra tick above the max
+const maxValue = 50; // Since we cap at 50
+const extraLineValue = maxValue + 2; // Add space above the max value
+
+const ctx = document.getElementById('activityTrendChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: Array.from({ length: 71 }, (_, i) => 70 - i),
+        datasets: [{
+            label: 'Cumulative District Activity',
+            data: trendData,
+            borderColor: 'rgba(10, 50, 43, 1)',
+            fill: false,
+            tension: 0.3,
+            pointBackgroundColor: 'rgba(10, 50, 43, 1)',
+            pointRadius: 2,
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'Timeline before SIA'
+                },
+                ticks: {
+                    callback: function(value, index) {
+                        return bracketIndices.includes(index) ? trendLabels[bracketIndices.indexOf(index)] : '';
+                    },
+                    maxRotation: 0,
+                    autoSkip: false
+                }
+            },
+            y: {
+                beginAtZero: true,
+                max: extraLineValue, // Extend the y-axis slightly above 50
+                ticks: {
+                    stepSize: 2,
+                    callback: function(value) {
+                        if (value === 50) return '50+'; // Show 50+ for the capped value
+                        if (value > 50) return ''; // Leave the extra tick unlabeled
+                        return value; // Label all other values
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'District entries'
+                }
+            }
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.parsed.y;
+                        return `District Activity: ${value >= 50 ? '50+' : value} updates`;
+                    }
+                }
+            },
+            legend: {
+                display: false,
+                position: 'top'
+            }
+        }
+    }
+});
+
+
+
+        function resetFilters() {
+            document.getElementById("region").value = "";
+            document.getElementById("place").value = "";
+            document.getElementById("filterForm").submit();
+        }
+
+        async function updatePlacesDropdown() {
+            const regionId = document.getElementById('region').value;
+            const placeDropdown = document.getElementById('place');
+            placeDropdown.innerHTML = '<option value="">All Districts</option>';
+
+            if (regionId) {
+                const response = await fetch(`/api/places?region_id=${regionId}`);
+                const places = await response.json();
+                places.forEach(place => {
+                    const option = document.createElement('option');
+                    option.value = place.id;
+                    option.textContent = place.name;
+                    placeDropdown.appendChild(option);
+                });
+
+                if ("{{ selected_place }}") {
+                    placeDropdown.value = "{{ selected_place }}";
+                }
+            }
+        }
+
+        window.onload = updatePlacesDropdown;
+    </script>
+{% endblock %}

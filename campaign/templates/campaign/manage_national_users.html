@@ -1,0 +1,123 @@
+{% extends "campaign/base.html" %}
+{% block title %}Manage National Users{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    .user-form {
+        width: 80%;
+        margin: 20px auto;
+    }
+    .user-form h2 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .table-container {
+        width: 100%;
+        margin-top: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table thead {
+        background-color: #f9f9f9;
+    }
+    table th, table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .create-button-container {
+        text-align: center;
+        margin: 20px 0;
+    }
+    .create-button {
+        background-color: rgba(10, 50, 43, 1);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        display: inline-block;
+    }
+    .create-button:hover {
+        background-color: rgba(15, 70, 60, 1);
+    }
+    .delete-button {
+        background-color: rgba(255, 99, 71, 0.1);
+        color: #FF6347;
+        border: none;
+        border-radius: 4px;
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .delete-button:hover {
+        background-color: rgba(255, 99, 71, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-form">
+    <h2>National Users</h2>
+
+    <!-- Create Button -->
+    <div class="create-button-container">
+        <a href="{% url 'create_national_user' %}" class="create-button">Create National User</a>
+    </div>
+
+    <!-- National Users Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in national_users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.phone_number }}</td>
+                        <td>
+                            <!-- Delete button that triggers SweetAlert -->
+                            <button type="button" onclick="confirmDelete('{{ user.id }}')" class="delete-button">Delete</button>
+                            <form id="delete-form-{{ user.id }}" action="{% url 'manage_national_users' %}" method="post" style="display: none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function confirmDelete(userId) {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "This action will permanently delete the user.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, delete!",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(`delete-form-${userId}`).submit();
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "campaign/base.html" %}
+{% load custom_filters %}
+
+{% block title %}Regional Scores{% endblock %}
+
+{% block extra_head %}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-border {
+            border-color: rgba(10, 50, 43, 0.2);
+        }
+        .table-border {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            word-break: break-word;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .max-w-7xl {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            .text-3xl {
+                font-size: 1.5rem;
+            }
+            .text-xl {
+                font-size: 1.25rem;
+            }
+            .overflow-x-auto {
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                font-size: 0.875rem;
+            }
+            th, td {
+                padding: 0.5rem 0.25rem;
+            }
+            .chart-container {
+                height: 300px !important;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .text-3xl {
+                font-size: 1.25rem;
+            }
+            .text-xl {
+                font-size: 1rem;
+            }
+            table {
+                font-size: 0.75rem;
+            }
+            th, td {
+                padding: 0.25rem 0.125rem;
+            }
+            .chart-container {
+                height: 250px !important;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Header with Campaign Name -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900">{{ campaign_name }}</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Table of Regional Scores -->
+        <div class="mb-8">
+            <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-300 custom-border">
+                <table class="w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="py-2 pl-2 pr-2 text-left text-sm font-semibold text-gray-900 sm:pl-4 border-r min-w-[200px]">Thematic Areas</th>
+                            {% for region in regions %}
+                                <th class="px-2 py-2 text-left text-sm font-semibold text-gray-900">{{ region.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for thematic_area in thematic_areas %}
+                        <tr>
+                            <td class="whitespace-nowrap py-2 pl-2 pr-2 text-sm text-gray-900 sm:pl-4 border-r min-w-[200px]">{{ thematic_area.name }}</td>
+                            {% for region in regions %}
+                                {% if total_completion_percentages and total_completion_percentages|get_item:region.name and total_completion_percentages|get_item:region.name|get_item:thematic_area.name %}
+                                    <td class="whitespace-nowrap px-2 py-2 text-sm text-gray-900">{{ total_completion_percentages|get_item:region.name|get_item:thematic_area.name }}%</td>
+                                {% else %}
+                                    <td class="whitespace-nowrap px-2 py-2 text-sm text-gray-500">N/A</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="whitespace-nowrap py-2 pl-2 pr-2 text-sm font-medium text-gray-900 sm:pl-4 border-r min-w-[200px]">Status of Preparedness</td>
+                            {% for region in regions %}
+                                <td class="whitespace-nowrap px-2 py-2 text-sm font-medium text-gray-900">
+                                    {% if status_of_preparedness|get_item:region.name == 0.0 %}
+                                        N/A
+                                    {% else %}
+                                        {{ status_of_preparedness|get_item:region.name }}%
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Status of Preparedness Chart -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Status of Preparedness by Region</h2>
+            <div class="overflow-hidden shadow-lg rounded-lg border border-gray-300 custom-border">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="chart-container" style="position: relative; height:400px;">
+                        <canvas id="preparednessChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function generatePreparednessChart(data) {
+        const ctx = document.getElementById('preparednessChart').getContext('2d');
+        const colors = data.values.map((value, index) => `hsl(${(index * 360 / data.values.length)}, 70%, 50%)`);
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Status of Preparedness (%)',
+                    data: data.values,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Preparedness (%)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (tooltipItem) => tooltipItem.raw + '%' } }
+                }
+            }
+        });
+    }
+
+    window.onload = function() {
+        const preparednessData = {
+            labels: [{% for region in regions %}'{{ region.name }}',{% endfor %}],
+            values: [{% for region in regions %}
+                {% if status_of_preparedness|get_item:region.name == 0.0 %}
+                    0,
+                {% else %}
+                    {{ status_of_preparedness|get_item:region.name }},
+                {% endif %}
+            {% endfor %}]
+        };
+        generatePreparednessChart(preparednessData);
+    }
+</script>
+{% endblock %}

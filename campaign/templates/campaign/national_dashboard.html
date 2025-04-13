@@ -1,0 +1,511 @@
+{% extends "campaign/base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+    National Dashboard
+{% endblock %}
+
+{% block extra_head %}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .custom-bg {
+            background-color: rgba(10,50,43,255);
+        }
+        .custom-border {
+            border-color: rgba(10,50,43,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-container {
+                height: 250px;
+            }
+            .overflow-x-auto {
+                max-width: 100%;
+                overflow-x: auto;
+            }
+            .sm\:px-6 {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            .lg\:px-8 {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            .text-3xl {
+                font-size: 1.5rem;
+            }
+            .text-lg {
+                font-size: 1rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2 sm:mb-0">{{ campaign_name }}</h1>
+        <p class="text-lg font-medium text-gray-600">Welcome, {{ user.get_full_name|default:user.username }}</p>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    
+    <div class="dashboard-grid mb-8">
+        
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">Campaign Details</h2>
+                <p>Round {{ campaign.round_number }}</p>
+                <p>Number of Districts: {{ campaign.number_of_districts }}</p>
+                <p>Type of Vaccine: {{ campaign.type_of_vaccine }}</p>
+            </div>
+        </div>
+
+        
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">Timeline</h2>
+                <p>Date of Update: {{ current_date|date:"M. d, Y" }}</p>
+                <p>Days to Campaign: {{ days_to_campaign }}</p>
+                <p>SIA Start Date: {{ campaign.sia_start_date }}</p>
+            </div>
+        </div>
+
+        
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">Scale Rate</h2>
+                <ul class="list-disc pl-5">
+                    <li>0 = Not started</li>
+                    <li>5 = 50% done</li>
+                    <li>10 = completed</li>
+                    <li>NA = Not Applicable</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Thematic Areas Status</h2>
+                <div class="chart-container">
+                    <canvas id="thematicBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Status of Preparedness</h2>
+                <div class="chart-container">
+                    <canvas id="circularChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row items-center mb-4">
+        <input type="text" id="searchInput" placeholder="Search Thematic Area" 
+               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600 mb-2 sm:mb-0 sm:mr-2 w-full sm:w-auto">
+        <div class="flex space-x-2">
+            <button onclick="filterThematicAreas()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Search</button>
+            <button onclick="resetThematicAreas()" 
+                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">Reset</button>
+        </div>
+    </div>
+
+   
+    {% for thematic_area, data in national_data.items %}
+    <div class="thematic-area-section mt-8" data-thematic-name="{{ thematic_area.name }}">
+        <h2 class="text-lg font-medium text-gray-900">Thematic Area: {{ thematic_area.name }}</h2>
+        <div class="mt-4 flex flex-col">
+            <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                    <div class="overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+                        <form id="thematicForm_{{ thematic_area.id }}" method="POST" action="{% url 'update_thematic_area_status' thematic_area.id %}" onsubmit="storeScrollPosition()">
+                            {% csrf_token %}
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-300">
+                                    
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Activities Planned</th>
+                                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 border-r">Timeline Before SIA</th>
+                                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 border-r">Scale</th>
+                                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Comments</th>
+                                        </tr>
+                                    </thead>
+                                   
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for activity_data in data.activities %}
+                                        <tr>
+                                            <td class="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">{{ activity_data.activity.name }}</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700 border-r">
+                                                <span>{{ weeks_to_campaign }} week(s)</span>
+                                            </td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 border-r">
+                                                <input type="number" name="scale_{{ activity_data.activity.id }}" value="{{ activity_data.scale }}" min="0" max="10" step="5" 
+                                                       class="block w-20 rounded-md border-gray-400 bg-gray-100 text-gray-700 text-center shadow-sm focus:border-gray-600 focus:ring-gray-600 sm:text-sm" 
+                                                       onblur="if(this.value === '') this.value = 0;"
+                                                       oninput="this.setCustomValidity('')" 
+                                                       oninvalid="this.setCustomValidity('Please enter either 0, 5, or 10.')">
+                                            </td>
+                                            <td class="whitespace-normal px-3 py-4 text-sm text-gray-500">
+                                                <textarea name="comments_{{ activity_data.activity.id }}" class="block w-full rounded-md border-gray-400 bg-gray-100 text-gray-700 text-left p-2 shadow-sm focus:border-gray-600 focus:ring-gray-600 sm:text-sm">{{ activity_data.comments }}</textarea>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                   
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="2" class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">TOTAL Implemented (%)</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">{{ data.total_percentage }}%</td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                                                <button onclick="saveThematicArea('{{ thematic_area.id }}')"
+                                                    class="inline-flex items-center rounded-md border border-transparent bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                                                    Save
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="mt-8">
+        <h2 class="text-lg font-medium text-gray-900">Thematic Areas Status</h2>
+        <div class="mt-4 flex flex-col">
+            <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                    <div class="overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-300">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 border-r">Thematic Areas</th>
+                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status of Implementation (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for thematic_area, data in national_data.items %}
+                                    <tr>
+                                        <td class="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">{{ thematic_area.name }}</td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-650">{{ data.total_percentage }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 border-r">Status of Preparedness</td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">{{ status_of_preparedness }}%</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function updateTimeline(activityId) {
+        var form = document.getElementById('timeline_form_' + activityId);
+        var timelineBeforeSIA = form.elements['timeline_before_sia'].value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '{% url "update_national_timeline" %}', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+        xhr.onload = function() {
+            if (xhr.status !== 200) {
+                alert('Failed to update timeline.');
+            }
+        };
+        xhr.send('activity_id=' + activityId + '&timeline_before_sia=' + encodeURIComponent(timelineBeforeSIA));
+    }
+
+    function generateThematicBarChart(data) {
+        const thematicData = data.labels.map((label, index) => {
+            return { label: label, value: data.values[index] };
+        });
+
+        thematicData.sort((a, b) => b.value - a.value);
+
+        const sortedLabels = thematicData.map(item => item.label);
+        const sortedValues = thematicData.map(item => item.value);
+
+        const barColor = '#4169E1';
+
+        const ctx = document.getElementById('thematicBarChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Status of Implementation (%)',
+                    data: sortedValues,
+                    backgroundColor: barColor,
+                    borderColor: barColor,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Implementation (%)' }
+                    },
+                    y: { 
+                        title: { display: true, text: 'Thematic Areas' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (tooltipItem) => tooltipItem.raw + '%' } }
+                }
+            }
+        });
+    }
+
+    function generateCircularChart(percentage) {
+        const ctx = document.getElementById('circularChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Preparedness', 'Remaining'],
+                datasets: [{
+                    data: [percentage, 100 - percentage],
+                    backgroundColor: [
+                        percentage > 70 ? '#10B981' : percentage > 40 ? '#F59E0B' : '#EF4444',
+                        '#E5E7EB'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false },
+                },
+                elements: {
+                    center: {
+                        text: percentage + '%',
+                        color: '#374151', 
+                        fontStyle: 'Inter', 
+                        sidePadding: 20,
+                        minFontSize: 25,
+                        lineHeight: 25
+                    }
+                }
+            },
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    if (chart.config.options.elements.center) {
+                        var ctx = chart.ctx;
+                        var centerConfig = chart.config.options.elements.center;
+                        var fontStyle = centerConfig.fontStyle || 'Arial';
+                        var txt = centerConfig.text;
+                        var color = centerConfig.color || '#000';
+                        var maxFontSize = centerConfig.maxFontSize || 75;
+                        var sidePadding = centerConfig.sidePadding || 20;
+                        var sidePaddingCalculated = (sidePadding / 100) * (chart.innerRadius * 2)
+                        ctx.font = "30px " + fontStyle;
+
+                        var stringWidth = ctx.measureText(txt).width;
+                        var elementWidth = (chart.innerRadius * 2) - sidePaddingCalculated;
+
+                        var widthRatio = elementWidth / stringWidth;
+                        var newFontSize = Math.floor(30 * widthRatio);
+                        var elementHeight = (chart.innerRadius * 2);
+
+                        var fontSizeToUse = Math.min(newFontSize, elementHeight, maxFontSize);
+                        var minFontSize = centerConfig.minFontSize;
+                        var lineHeight = centerConfig.lineHeight || 25;
+                        var wrapText = false;
+
+                        if (minFontSize === undefined) {
+                            minFontSize = 20;
+                        }
+
+                        if (minFontSize && fontSizeToUse < minFontSize) {
+                            fontSizeToUse = minFontSize;
+                            wrapText = true;
+                        }
+
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        var centerX = ((chart.chartArea.left + chart.chartArea.right) / 2);
+                        var centerY = ((chart.chartArea.top + chart.chartArea.bottom) / 2);
+                        ctx.font = fontSizeToUse + "px " + fontStyle;
+                        ctx.fillStyle = color;
+
+                        if (!wrapText) {
+                            ctx.fillText(txt, centerX, centerY);
+                            return;
+                        }
+
+                        var words = txt.split(' ');
+                        var line = '';
+                        var lines = [];
+
+                        for (var n = 0; n < words.length; n++) {
+                            var testLine = line + words[n] + ' ';
+                            var metrics = ctx.measureText(testLine);
+                            var testWidth = metrics.width;
+                            if (testWidth > elementWidth && n > 0) {
+                                lines.push(line);
+                                line = words[n] + ' ';
+                            } else {
+                                line = testLine;
+                            }
+                        }
+
+                        lines.push(line);
+
+                        if (lines.length > 3) {
+                            lines.length = 3;
+                            lines[2] = lines[2].replace(/(\.{3})?$/, '...');
+                        }
+
+                        centerY -= (lines.length / 2) * lineHeight;
+
+                        for (var n = 0; n < lines.length; n++) {
+                            ctx.fillText(lines[n], centerX, centerY);
+                            centerY += lineHeight;
+                        }
+                    }
+                }
+            }]
+        });
+    }
+
+    function filterThematicAreas() {
+        const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+        localStorage.setItem('nationalThematicSearchTerm', searchTerm);
+        applySearchFilter(searchTerm);
+    }
+
+    function applySearchFilter(searchTerm) {
+        document.querySelectorAll(".thematic-area-section").forEach(section => {
+            const areaName = section.getAttribute("data-thematic-name").toLowerCase();
+            if (areaName.includes(searchTerm)) {
+                section.style.display = "";
+            } else {
+                section.style.display = "none";
+            }
+        });
+    }
+
+    function resetThematicAreas() {
+        document.getElementById("searchInput").value = "";
+        localStorage.removeItem('nationalThematicSearchTerm');
+        document.querySelectorAll(".thematic-area-section").forEach(section => {
+            section.style.display = "";
+        });
+    }
+
+    window.onload = function() {
+        const savedSearchTerm = localStorage.getItem('nationalThematicSearchTerm');
+        if (savedSearchTerm) {
+            document.getElementById("searchInput").value = savedSearchTerm;
+            applySearchFilter(savedSearchTerm);
+        }
+
+        const thematicData = {
+            labels: [{% for thematic_area, data in national_data.items %}'{{ thematic_area.name }}',{% endfor %}],
+            values: [{% for thematic_area, data in national_data.items %}{{ data.total_percentage }},{% endfor %}]
+        };
+        generateThematicBarChart(thematicData);
+        generateCircularChart({{ status_of_preparedness }});
+    }
+
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+
+    function storeScrollPosition() {
+        sessionStorage.setItem('scrollPosition', window.scrollY);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const scrollPosition = sessionStorage.getItem('scrollPosition');
+        if (scrollPosition) {
+            window.scrollTo(0, scrollPosition);
+            sessionStorage.removeItem('scrollPosition');
+        }
+    });
+    function saveThematicArea(thematicAreaId) {
+    const form = document.getElementById(`thematicForm_${thematicAreaId}`);
+    const formData = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: new URLSearchParams(formData),
+    })
+    .then((response) => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            throw new Error('Failed to save thematic area status');
+        }
+    })
+    .then((data) => {
+        Swal.fire({
+            icon: 'success',
+            title: 'Changes saved successfully!',
+            showConfirmButton: false,
+            timer: 1500,
+            timerProgressBar: true,
+        });
+    })
+    .catch((error) => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Failed to save changes!',
+            text: error.message,
+        });
+    });
+}
+
+</script>
+{% endblock %}

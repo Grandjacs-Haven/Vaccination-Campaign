@@ -1,0 +1,278 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ campaign_name }} - PDF Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "{{ campaign_name }} - Readiness Assessment Report";
+                font-size: 10pt;
+                color: #004080;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10pt;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-size: 11pt;
+            line-height: 1.5;
+        }
+        .content {
+            margin-top: 1cm;
+        }
+        h1, h2, h3 {
+            color: #004080;
+            margin-top: 0.5cm;
+            margin-bottom: 0.3cm;
+            page-break-after: avoid;
+        }
+        h1 {
+            font-size: 24pt;
+            text-align: center;
+            border-bottom: 2px solid #004080;
+            padding-bottom: 0.2cm;
+        }
+        h2 {
+            font-size: 18pt;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 0.1cm;
+        }
+        h3 {
+            font-size: 14pt;
+        }
+        .section {
+            margin-bottom: 1cm;
+            page-break-inside: avoid;
+        }
+        .flex-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5cm;
+        }
+        .half-width {
+            width: 48%;
+        }
+        .chart-container {
+            text-align: center;
+            margin-bottom: 0.5cm;
+        }
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+        }
+        .legend {
+            font-size: 9pt;
+            color: #555;
+            margin-top: 0.2cm;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-bottom: 0.5cm;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.2cm;
+            text-align: center;
+        }
+        th {
+            background-color: #e0e0e0;
+            font-weight: bold;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 12px;
+            margin-top: 0.1cm;
+        }
+        .progress-bar {
+            height: 12px;
+        }
+        .text-green { color: #28a745; }
+        .text-yellow { color: #ffc107; }
+        .text-red { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <!-- Campaign Overview -->
+        <section class="section">
+            <h1>{{ campaign_name }}</h1>
+            <div class="flex-container">
+                <div class="half-width">
+                    <p><strong>Date of Update:</strong> {{ current_date }}</p>
+                    <p><strong>Round:</strong> {{ round_number }}</p>
+                    <p><strong>Days to Campaign:</strong> {{ days_to_campaign }}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Preparedness Overview Section -->
+        <section class="section">
+            <h2>Preparedness Overview</h2>
+            <div class="flex-container">
+                <div class="half-width chart-container">
+                    <h3>National Preparedness</h3>
+                    <img src="data:image/png;base64,{{ circular_chart_national }}" alt="National Preparedness Chart">
+                    <div class="legend">{{ status_of_preparedness }}% Overall National Preparedness</div>
+                </div>
+                <div class="half-width chart-container">
+                    <h3>Regional Preparedness</h3>
+                    <img src="data:image/png;base64,{{ overall_readiness_chart }}" alt="Regional Preparedness Chart">
+                    <div class="legend">{{ overall_readiness }}% Overall Regional Preparedness</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Thematic Areas Charts Section -->
+        <section class="section">
+            <h2>Thematic Areas Status</h2>
+            <div class="flex-container">
+                <div class="half-width chart-container">
+                    <h3>National Thematic Area status</h3>
+                    <img src="data:image/png;base64,{{ thematic_bar_chart_national }}" alt="National Thematic Areas Chart">
+                </div>
+                <div class="half-width chart-container">
+                    <h3>Overall Regional Thematic Area status</h3>
+                    <img src="data:image/png;base64,{{ thematic_bar_chart_regional }}" alt="Regional Thematic Areas Chart">
+                </div>
+            </div>
+        </section>
+
+        <!-- Regional Preparedness Table -->
+        <section class="section">
+            <h2>Regional Preparedness Details</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Region</th>
+                        {% for thematic_area in thematic_area_names %}
+                            <th>{{ thematic_area }}</th>
+                        {% endfor %}
+                        <th>Total Preparedness (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in regional_readiness_with_thematics %}
+                        <tr>
+                            <td>{{ entry.region }}</td>
+                            {% for thematic_area in thematic_area_names %}
+                                <td>
+                                    {% with percentage=entry.thematic_scores|get_item:thematic_area %}
+                                        {% if percentage > 70 %}
+                                            <span class="text-green">{{ percentage }}%</span>
+                                        {% elif percentage > 40 %}
+                                            <span class="text-yellow">{{ percentage }}%</span>
+                                        {% else %}
+                                            <span class="text-red">{{ percentage }}%</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                            {% endfor %}
+                            <td><strong>{{ entry.preparedness }}%</strong></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Top and Bottom Regions Section -->
+        <section class="section">
+            <h2>Most and Least Ready Regions</h2>
+            <div class="flex-container">
+                <div class="half-width">
+                    <h3>Top Regions (score of 70% and above)</h3>
+                    {% if  top_regions %}
+                        {% for region in top_regions %}
+                            <div style="margin-bottom: 0.3cm;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>{{ region.region }}</span>
+                                    <span>{{ region.preparedness }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: {{ region.preparedness }}%; background-color: #28a745;"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">None</p>
+                    {% endif %}
+                </div>
+                <div class="half-width">
+                    <h3>Bottom Regions (score of 40% and below)</h3>
+                    {% if  bottom_regions %}
+                        {% for region in bottom_regions %}
+                            <div style="margin-bottom: 0.3cm;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>{{ region.region }}</span>
+                                    <span>{{ region.preparedness }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: {{ region.preparedness }}%; background-color: #dc3545;"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">None</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Top and Bottom Districts Section -->
+        <section class="section">
+            <h2>Most and Least Ready Districts</h2>
+            <div class="flex-container">
+                <div class="half-width">
+                    <h3>Top Districts (score of 70% and above)</h3>
+                    {% if  top_places %}
+                        {% for place in top_places %}
+                            <div style="margin-bottom: 0.2cm;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>{{ place.place }}</span>
+                                    <span>{{ place.preparedness }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: {{ place.preparedness }}%; background-color: #28a745;"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">None</p>
+                    {% endif %}
+                </div>
+                <div class="half-width">
+                    <h3>Bottom Districts (score of 40% and below)</h3>
+                    {% if  bottom_places %}
+                        {% for place in bottom_places %}
+                            <div style="margin-bottom: 0.2cm;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>{{ place.place }}</span>
+                                    <span>{{ place.preparedness }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" style="width: {{ place.preparedness }}%; background-color: #dc3545;"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">None</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

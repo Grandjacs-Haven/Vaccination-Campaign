@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Campaign</title>
+</head>
+<body>
+    <h2>Edit Campaign</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="name">Campaign Name:</label>
+        <input type="text" name="name" value="{{ campaign.name }}" required>
+        
+        <label for="sia_start_date">SIA Start Date:</label>
+        <input type="date" name="sia_start_date" value="{{ campaign.sia_start_date|date:'Y-m-d' }}" required>
+        
+        <label for="type_of_vaccine">Type of Vaccine:</label>
+        <input type="text" name="type_of_vaccine" value="{{ campaign.type_of_vaccine }}" required>
+        
+        <label for="round_number">Round Number:</label>
+        <input type="text" name="round_number" value="{{ campaign.round_number }}" required>
+
+        <label for="is_active">Active:</label>
+        <input type="checkbox" name="is_active" {% if campaign.is_active %}checked{% endif %}>
+        
+        <button type="submit">Save Changes</button>
+    </form>
+
+    <a href="{% url 'edit_campaign_places' campaign_id=campaign.id %}">Edit Selected Places</a>
+    <a href="{% url 'manage_campaigns' %}">Back to Manage Campaigns</a>
+</body>
+</html>

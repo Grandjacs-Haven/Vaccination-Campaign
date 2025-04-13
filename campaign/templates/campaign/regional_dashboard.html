@@ -1,0 +1,811 @@
+{% extends "campaign/base2.html" %}
+{% load custom_filters %}
+
+{% block title %}
+    {% if request.user.role == 'regional' %}
+        {{ request.user.region.name }} Dashboard
+    {% elif request.user.role == 'place' %}
+        {{ request.user.place.name }} Dashboard
+    {% else %}
+        Dashboard
+    {% endif %}
+{% endblock %}
+
+{% block extra_head %}
+   
+    <script src="https://cdn.tailwindcss.com"></script>
+
+   
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+   
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .custom-border {
+            border-color: rgba(10,50,43,0.2);
+        }
+        
+        .header-title {
+            padding: 1rem;
+        }
+        .header-welcome {
+            padding-right: 1rem;
+        }
+        .search-section {
+            margin-bottom: 1.5rem;
+        }
+        .search-input {
+            padding: 0.5rem 1rem;
+        }
+        .search-buttons {
+            gap: 0.5rem;
+        }
+        .thematic-area-title {
+            padding: 0.75rem 1rem;
+        }
+        .table-cell-padding {
+            padding: 0.75rem 1rem;
+        }
+        .table-header-padding {
+            padding: 0.875rem 1rem;
+        }
+
+      
+        @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        .header-title, .header-welcome {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .search-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-input {
+            margin-bottom: 0.5rem;
+        }
+        .search-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table-cell-padding, .table-header-padding {
+            padding: 0.5rem;
+        }
+        input[name="scale"] {
+            width: 100; 
+            font-size: 16px; 
+            padding: 0.7rem; 
+            text-align: center; 
+        }
+    }
+    </style>
+
+   
+    <script>
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+    
+        function updateStatus(activityId, placeId, prefix) {
+            var form = document.getElementById('form_' + prefix);
+            var scale = form.elements['scale'].value;
+            var comments = form.elements['comments'] ? form.elements['comments'].value : '';
+    
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '{% url "update_implementation_status" %}', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    location.reload();
+                } else if (xhr.status === 403) {
+                    alert('You are not authorized to perform this action.');
+                } else {
+                    alert('Failed to update status.');
+                }
+            };
+            xhr.send('activity_id=' + activityId + '&place_id=' + placeId + '&scale=' + scale + '&comments=' + encodeURIComponent(comments));
+        }
+    
+        function updateTimeline(activityId) {
+            var form = document.getElementById('timeline_form_' + activityId);
+            var timelineBeforeSIA = form.elements['timeline_before_sia'].value;
+    
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '{% url "update_regional_timeline" %}', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+            xhr.onload = function() {
+                if (xhr.status !== 200) {
+                    alert('Failed to update timeline.');
+                }
+            };
+            xhr.send('activity_id=' + activityId + '&timeline_before_sia=' + encodeURIComponent(timelineBeforeSIA));
+        }
+    
+        function updateComments(thematicAreaId) {
+            var form = document.getElementById('comments_form_' + thematicAreaId);
+            var comments = form.elements['comments'].value;
+    
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '{% url "update_thematic_area_comments" %}', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Comment saved successfully!',
+                        showConfirmButton: false,
+                        timer: 1000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    alert('Failed to update comment.');
+                }
+            };
+            xhr.send('thematic_area_id=' + thematicAreaId + '&comments=' + encodeURIComponent(comments));
+        }
+    
+        function filterThematicAreas() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            localStorage.setItem('thematicSearchTerm', searchTerm);
+            applySearchFilter(searchTerm);
+        }
+    
+        function applySearchFilter(searchTerm) {
+            document.querySelectorAll(".thematic-area-section").forEach(section => {
+                const areaName = section.getAttribute("data-thematic-name").toLowerCase();
+                section.style.display = areaName.includes(searchTerm) ? "" : "none";
+            });
+        }
+    
+        function resetThematicAreas() {
+            document.getElementById("searchInput").value = "";
+            localStorage.removeItem('thematicSearchTerm');
+            document.querySelectorAll(".thematic-area-section").forEach(section => {
+                section.style.display = "";
+            });
+        }
+    
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedSearchTerm = localStorage.getItem('thematicSearchTerm');
+            if (savedSearchTerm) {
+                document.getElementById("searchInput").value = savedSearchTerm;
+                applySearchFilter(savedSearchTerm);
+            }
+    
+            
+            {% if request.user.role == 'place' %}
+            const placePreparednessChart = document.getElementById('circularChart_{{ request.user.place.id }}');
+            if (placePreparednessChart) {
+                generateCircularChart(`circularChart_{{ request.user.place.id }}`, {{ preparedness_status|get_item:request.user.place.name }});
+            }
+            {% endif %}
+    
+            
+            {% if request.user.role == 'regional' %}
+            const regionalPreparednessChart = document.getElementById('regionalPreparednessChart');
+            if (regionalPreparednessChart) {
+                const regionalPreparedness = {{ regional_preparedness }};
+                generateCircularChart('regionalPreparednessChart', regionalPreparedness);
+            }
+            {% endif %}
+    
+            
+            const thematicLabels = [
+                {% for thematic_area, activities in regional_data.items %}
+                    "{{ thematic_area.name }}",
+                {% endfor %}
+            ];
+    
+            {% if request.user.role == 'regional' %}
+                const regionalCompletionData = [
+                    {% for thematic_area, activities in regional_data.items %}
+                        {{ total_completion_percentages|get_item:request.user.region.name|get_item:thematic_area.name }},
+                    {% endfor %}
+                ];
+    
+                if (thematicLabels.length === 0 || regionalCompletionData.length === 0) {
+                    console.error("No data available for the regional thematic chart.");
+                } else {
+                    
+                    const thematicScores = thematicLabels.map((label, index) => ({
+                        label: label,
+                        value: parseFloat(regionalCompletionData[index]) || 0
+                    }));
+                    thematicScores.sort((a, b) => b.value - a.value);
+    
+                    const sortedLabels = thematicScores.map(item => item.label);
+                    const sortedValues = thematicScores.map(item => item.value);
+    
+                    const regionalCompletionChart = document.getElementById('regionalCompletionChart');
+                    if (regionalCompletionChart) {
+                        new Chart(regionalCompletionChart.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: sortedLabels,
+                                datasets: [{
+                                    label: 'Total Completion (%)',
+                                    data: sortedValues,
+                                    backgroundColor: '#008080',
+                                    borderColor: '#008080',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: { beginAtZero: true },
+                                    y: { beginAtZero: true, max: 100 }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Regional completion chart element not found.");
+                    }
+                }
+            {% elif request.user.role == 'place' %}
+                const thematicData = [
+                    {% for thematic_area, activities in regional_data.items %}
+                        {{ status_completion|get_item:thematic_area.name|get_item:request.user.place.name }},
+                    {% endfor %}
+                ];
+    
+                if (thematicLabels.length === 0 || thematicData.length === 0) {
+                    console.error("No data available for the thematic chart.");
+                } else {
+                    
+                    const thematicScores = thematicLabels.map((label, index) => ({
+                        label: label,
+                        value: parseFloat(thematicData[index]) || 0
+                    }));
+                    thematicScores.sort((a, b) => b.value - a.value);
+    
+                    const sortedLabels = thematicScores.map(item => item.label);
+                    const sortedValues = thematicScores.map(item => item.value);
+    
+                    const thematicChart = document.getElementById('thematicChart');
+                    if (thematicChart) {
+                        new Chart(thematicChart.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: sortedLabels,
+                                datasets: [{
+                                    label: 'Thematic Area Scores (%)',
+                                    data: sortedValues,
+                                    backgroundColor: '#008080',
+                                    borderColor: '#008080',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: { beginAtZero: true },
+                                    y: { beginAtZero: true, max: 100 }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Thematic chart element not found.");
+                    }
+                }
+            {% endif %}
+    
+        }); 
+    
+        function generateCircularChart(elementId, percentage) {
+            const ctx = document.getElementById(elementId).getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Preparedness', 'Remaining'],
+                    datasets: [{
+                        data: [percentage, 100 - percentage],
+                        backgroundColor: [
+                            percentage > 70 ? '#10B981' : percentage > 40 ? '#F59E0B' : '#EF4444',
+                            '#E5E7EB'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                    },
+                    elements: {
+                        center: {
+                            text: percentage + '%',
+                            color: '#374151',
+                            fontStyle: 'Inter',
+                            sidePadding: 20,
+                            minFontSize: 25,
+                            lineHeight: 25
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'centerText',
+                    afterDraw: function(chart) {
+                        if (chart.config.options.elements.center) {
+                            var ctx = chart.ctx;
+                            var centerConfig = chart.config.options.elements.center;
+                            var fontStyle = centerConfig.fontStyle || 'Arial';
+                            var txt = centerConfig.text;
+                            var color = centerConfig.color || '#000';
+                            var maxFontSize = centerConfig.maxFontSize || 75;
+                            var sidePadding = centerConfig.sidePadding || 20;
+                            var sidePaddingCalculated = (sidePadding / 100) * (chart.innerRadius * 2);
+                            ctx.font = "30px " + fontStyle;
+    
+                            var stringWidth = ctx.measureText(txt).width;
+                            var elementWidth = (chart.innerRadius * 2) - sidePaddingCalculated;
+    
+                            var widthRatio = elementWidth / stringWidth;
+                            var newFontSize = Math.floor(30 * widthRatio);
+                            var elementHeight = (chart.innerRadius * 2);
+    
+                            var fontSizeToUse = Math.min(newFontSize, elementHeight, maxFontSize);
+                            var minFontSize = centerConfig.minFontSize;
+                            var lineHeight = centerConfig.lineHeight || 25;
+                            var wrapText = false;
+    
+                            if (minFontSize === undefined) {
+                                minFontSize = 20;
+                            }
+    
+                            if (minFontSize && fontSizeToUse < minFontSize) {
+                                fontSizeToUse = minFontSize;
+                                wrapText = true;
+                            }
+    
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            var centerX = ((chart.chartArea.left + chart.chartArea.right) / 2);
+                            var centerY = ((chart.chartArea.top + chart.chartArea.bottom) / 2);
+                            ctx.font = fontSizeToUse + "px " + fontStyle;
+                            ctx.fillStyle = color;
+    
+                            if (!wrapText) {
+                                ctx.fillText(txt, centerX, centerY);
+                                return;
+                            }
+    
+                            var words = txt.split(' ');
+                            var line = '';
+                            var lines = [];
+    
+                            for (var n = 0; n < words.length; n++) {
+                                var testLine = line + words[n] + ' ';
+                                var metrics = ctx.measureText(testLine);
+                                var testWidth = metrics.width;
+                                if (testWidth > elementWidth && n > 0) {
+                                    lines.push(line);
+                                    line = words[n] + ' ';
+                                } else {
+                                    line = testLine;
+                                }
+                            }
+    
+                            lines.push(line);
+    
+                            if (lines.length > 3) {
+                                lines.length = 3;
+                                lines[2] = lines[2].replace(/(\.{3})?$/, '...');
+                            }
+    
+                            centerY -= (lines.length / 2) * lineHeight;
+    
+                            for (var n = 0; n < lines.length; n++) {
+                                ctx.fillText(lines[n], centerX, centerY);
+                                centerY += lineHeight;
+                            }
+                        }
+                    }
+                }]
+            });
+        }
+    
+        function saveFormsByThematicArea(thematicAreaName) {
+    const thematicSection = document.querySelector(`[data-thematic-name="${thematicAreaName}"]`);
+    const forms = thematicSection.querySelectorAll('form.thematic-form');
+    const csrfToken = getCsrfToken();
+    const requests = [];
+    let isValid = true;
+
+    forms.forEach((form) => {
+        const scaleInput = form.elements['scale'];
+        const scaleValue = parseInt(scaleInput.value, 10);
+
+        if (![0, 5, 10].includes(scaleValue)) {
+            scaleInput.setCustomValidity('Please enter either 0, 5, or 10.');
+            scaleInput.reportValidity();
+            isValid = false;
+        } else {
+            scaleInput.setCustomValidity('');
+        }
+
+        if (isValid) {
+            const activityId = form.id.split('_')[1];
+            const placeId = form.id.split('_')[2];
+            const formData = `activity_id=${activityId}&place_id=${placeId}&scale=${scaleValue}`;
+
+            requests.push(
+                fetch('{% url "update_implementation_status" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: formData,
+                }).then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to save data for activity ${activityId}`);
+                    }
+                    return response.json();
+                })
+            );
+        }
+    });
+
+    if (isValid) {
+        Promise.all(requests)
+            .then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: `Changes for ${thematicAreaName} saved successfully!`,
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true,
+                });
+                location.reload();
+            })
+            .catch((error) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: `Failed to save changes for ${thematicAreaName}`,
+                    text: error.message,
+                });
+            });
+    }
+}
+    
+    </script>
+    
+{% endblock %}
+
+{% block content %}
+<div class="max-w-8xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+   
+    <header class="bg-white shadow-sm rounded-lg mb-6">
+        <div class="max-w-8xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center header-title">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2 sm:mb-0">
+                {% if campaign_name %}
+                    {{ campaign_name }}
+                {% else %}
+                    No Active Campaign
+                {% endif %}
+            </h1>
+            <div class="flex items-center space-x-4 header-welcome">
+                <p class="text-lg font-medium text-gray-600">Welcome, {{ request.user.get_full_name|default:request.user.username }}</p>
+            </div>
+        </div>
+    </header>
+
+    {% if campaign %}
+       
+        <div class="dashboard-grid mb-8">
+           
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Campaign Details</h3>
+                    <p class="text-gray-700">Round {{ campaign.round_number }}</p>
+                    <p class="text-gray-700">Number of Districts: {{ campaign.number_of_districts }}</p>
+                    <p class="text-gray-700">Type of Vaccine: {{ campaign.type_of_vaccine }}</p>
+                </div>
+            </div>
+
+           
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Timeline</h3>
+                    <p class="text-gray-700">Date of Update: {{ current_date|date:"M. d, Y" }}</p>
+                    <p class="text-gray-700">Days to Campaign: {{ days_to_campaign }}</p>
+                    <p class="text-gray-700">SIA Start Date: {{ campaign.sia_start_date }}</p>
+                </div>
+            </div>
+
+          
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-200 custom-border">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Scale Rate</h3>
+                    <ul class="list-disc pl-5 text-gray-700">
+                        <li>0 = Not started</li>
+                        <li>5 = 50% done</li>
+                        <li>10 = Completed</li>
+                        <li>NA = Not Applicable</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+      
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {% if request.user.role == 'place' %}
+               
+                <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ request.user.place.name }} Preparedness</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="circularChart_{{ request.user.place.id }}"></canvas>
+                    </div>
+                </div>
+        
+               
+                <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Thematic Area Scores</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="thematicChart"></canvas>
+                    </div>
+                </div>
+            {% endif %}
+        
+            {% if request.user.role == 'regional' %}
+                
+                <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Regional Preparedness</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="regionalPreparednessChart"></canvas>
+                    </div>
+                </div>
+        
+                
+                <div class="bg-white p-4 rounded-lg shadow-lg border border-gray-200 custom-border">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Thematic Area Scores</h3>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="regionalCompletionChart"></canvas>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        
+        <div class="flex flex-col sm:flex-row items-center mb-4 search-section">
+            <input type="text" id="searchInput" placeholder="Search Thematic Area" 
+                   class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600 mb-2 sm:mb-0 sm:mr-2">
+            <div class="flex justify-between w-full sm:w-auto search-buttons">
+                <button onclick="filterThematicAreas()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 w-full sm:w-auto">Search</button>
+                <button onclick="resetThematicAreas()" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 w-full sm:w-auto sm:ml-2">Reset</button>
+            </div>
+        </div>
+
+       
+        {% for thematic_area, activities in regional_data.items %}
+        <div class="thematic-area-section mb-8" data-thematic-name="{{ thematic_area.name }}">
+            <h3 class="text-lg font-medium text-gray-900 bg-gray-200 border-b rounded-t-lg thematic-area-title">Thematic Area: {{ thematic_area.name }}</h3>
+            <div class="bg-white shadow-lg rounded-b-lg overflow-hidden border border-gray-200 custom-border">
+                <div class="table-responsive">
+                    <table class="min-w-full divide-y divide-gray-300">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="table-header-padding text-left text-sm font-semibold text-gray-900 border-r">Activities Planned</th>
+                                <th class="table-header-padding text-left text-sm font-semibold text-gray-900 border-r">Timeline Before SIA</th>
+                    
+                                {% if request.user.role == 'regional' %}
+                                    <th class="table-header-padding text-left text-sm font-semibold text-gray-900 border-r">Regional Score</th>
+                                {% endif %}
+                    
+                                {% for place in places %}
+                                    <th class="table-header-padding text-left text-sm font-semibold text-gray-900 {% if not forloop.last %}border-r{% endif %}">{{ place.name }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for activity_data in activities %}
+                            <tr>
+                                <td class="table-cell-padding text-sm font-medium text-gray-900 border-r">{{ activity_data.activity.name }}</td>
+                                <td class="table-cell-padding text-sm text-gray-500 border-r">{{ weeks_to_campaign }} week(s)</td>
+                    
+                                {% if request.user.role == 'regional' %}
+                                    <td class="table-cell-padding text-sm text-gray-500 border-r">{{ activity_data.regional_score }}</td>
+                                {% endif %}
+                    
+                                {% for place_data in activity_data.place_data %}
+                                <td class="table-cell-padding text-sm text-gray-500 {% if not forloop.last %}border-r{% endif %}">
+                                    {% if request.user.role == 'place' and place_data.place == request.user.place %}
+                                       
+                                        <form id="form_{{ activity_data.activity.id }}_{{ place_data.place.id }}" class="flex items-center space-x-2 thematic-form">
+                                            {% csrf_token %}
+                                            <input type="number" name="scale" value="{{ place_data.scale }}" min="0" max="10" step="5"
+                                                class="w-16 px-2 py-1 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gray-600 text-sm"
+                                                required onblur="if(this.value === '') this.value = 0;"
+                                                oninput="this.setCustomValidity('')"
+                                                oninvalid="this.setCustomValidity('Please enter either 0, 5 or 10.')">
+                                            
+                                            <button type="button" class="hidden px-2 py-1 bg-gray-600 text-white text-sm rounded-md">Save</button>
+                                        </form>
+                                    {% else %}
+                                        
+                                        {{ place_data.scale }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    
+                      
+                        <tfoot>
+                            <tr class="bg-gray-50">
+                                <td colspan="2" class="table-cell-padding text-sm font-medium text-gray-900 border-r">TOTAL Completion (%)</td>
+                    
+                                {% if request.user.role == 'regional' %}
+                                    
+                                    <td class="table-cell-padding text-sm font-medium text-gray-900 border-r">{{ total_completion_percentages|get_item:request.user.region.name|get_item:thematic_area.name }}%</td>
+                                    {% for place in places %}
+                                        <td class="table-cell-padding text-sm font-medium text-gray-900 {% if not forloop.last %}border-r{% endif %}">{{ status_completion|get_item:thematic_area.name|get_item:place.name }}%</td>
+                                    {% endfor %}
+                    
+                                {% elif request.user.role == 'place' %}
+                                    
+                                    <td class="table-cell-padding text-sm font-medium text-gray-900 flex items-center justify-left">
+                                        <span class="mr-10">{{ status_completion|get_item:thematic_area.name|get_item:request.user.place.name }}%</span>
+                                        
+                                        <button onclick="saveFormsByThematicArea('{{ thematic_area.name }}')"
+                                            class="px-2 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                            Save
+                                        </button>
+                                    </td>
+                                    
+                                    
+                                {% endif %}
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            
+            <div class="px-4 py-3 bg-gray-100">
+                {% if request.user.role == 'regional' %}
+                    <p class="font-semibold text-gray-700 mb-2">Thematic Area Comments:</p>
+                    <form id="comments_form_{{ thematic_area.id }}" onsubmit="updateComments('{{ thematic_area.id }}'); return false;" class="flex flex-col space-y-2">
+                        {% csrf_token %}
+                        <textarea name="comments" rows="3" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 text-sm">{{ thematic_area.comments }}</textarea>
+                        <button type="submit" class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md self-start">Save Comment</button>
+                    </form>
+                {% else %}
+                    <p class="font-semibold text-gray-700 mb-2">Thematic Area Comments:</p>
+                    <p class="text-sm text-gray-600">{{ thematic_area.comments }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+       
+        {% if request.user.role == 'regional' or request.user.role == 'place' %}
+        <div class="mb-8 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 custom-border">
+            <h3 class="text-lg font-medium text-gray-900 bg-gray-200 px-4 py-3 border-b">Status of Completion</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="table-header-padding text-left text-sm font-semibold text-gray-900 border-r">Thematic Areas</th>
+                            
+                            {% if request.user.role == 'regional' %}
+                                {% for place in places %}
+                                    <th class="table-header-padding text-left text-sm font-semibold text-gray-900 {% if not forloop.last %}border-r{% endif %}">{{ place.name }}</th>
+                                {% endfor %}
+                            {% elif request.user.role == 'place' %}
+                                <th class="table-header-padding text-left text-sm font-semibold text-gray-900">{{ request.user.place.name }}</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for thematic_area_name, place_scores in status_completion.items %}
+                            <tr>
+                                <td class="table-cell-padding text-sm text-gray-900 border-r">{{ thematic_area_name }}</td>
+                                
+                                {% if request.user.role == 'regional' %}
+                                    {% for place in places %}
+                                        <td class="table-cell-padding text-sm text-gray-500 {% if not forloop.last %}border-r{% endif %}">{{ place_scores|get_item:place.name }}%</td>
+                                    {% endfor %}
+                                {% elif request.user.role == 'place' %}
+                                    <td class="table-cell-padding text-sm text-gray-500">{{ place_scores|get_item:request.user.place.name }}%</td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-gray-50">
+                            <td class="table-cell-padding text-sm font-medium text-gray-900 border-r">Status of Preparedness</td>
+                            
+                            {% if request.user.role == 'regional' %}
+                                {% for place in places %}
+                                    <td class="table-cell-padding text-sm font-medium text-gray-900 {% if not forloop.last %}border-r{% endif %}">{{ preparedness_status|get_item:place.name }}%</td>
+                                {% endfor %}
+                            {% elif request.user.role == 'place' %}
+                                <td class="table-cell-padding text-sm font-medium text-gray-900">{{ preparedness_status|get_item:request.user.place.name }}%</td>
+                            {% endif %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <p class="text-xl text-gray-700 text-center">There is currently no active campaign.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    
+    function filterThematicAreas() {
+        const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+        localStorage.setItem('regionalThematicSearchTerm', searchTerm); 
+        applySearchFilter(searchTerm);
+    }
+
+    function applySearchFilter(searchTerm) {
+        document.querySelectorAll(".thematic-area-section").forEach(section => {
+            const areaName = section.getAttribute("data-thematic-name").toLowerCase();
+            section.style.display = areaName.includes(searchTerm) ? "" : "none";
+        });
+    }
+
+    function resetThematicAreas() {
+        document.getElementById("searchInput").value = "";
+        localStorage.removeItem('regionalThematicSearchTerm');  
+        document.querySelectorAll(".thematic-area-section").forEach(section => {
+            section.style.display = "";
+        });
+    }
+
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        const savedSearchTerm = localStorage.getItem('regionalThematicSearchTerm');
+        if (savedSearchTerm) {
+            document.getElementById("searchInput").value = savedSearchTerm;
+            applySearchFilter(savedSearchTerm);
+        }
+    });
+</script>
+{% endblock %}

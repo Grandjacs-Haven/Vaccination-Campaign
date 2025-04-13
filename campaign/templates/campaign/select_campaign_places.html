@@ -1,0 +1,215 @@
+{% extends "campaign/base.html" %}
+
+{% block title %}Select Places for Campaign{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .container {
+            width: 80%;
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        h2 {
+            text-align: center;
+            color: rgba(10, 50, 43, 1);
+        }
+
+        .region-select {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .places-list ul {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .places-list li {
+            width: 30%;
+            margin-bottom: 10px;
+        }
+
+        .buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Differentiated button styles */
+        .buttons .select-all-button,
+        .buttons .remove-all-button {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: 1px solid transparent;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .buttons .select-all-button {
+            background-color: #1a73e8; /* Blue for Select All */
+            color: white;
+        }
+
+        .buttons .select-all-button:hover {
+            background-color: #135ba1;
+            border-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .buttons .remove-all-button {
+            background-color: #fbbc05; /* Yellow for Remove All */
+            color: #333;
+        }
+
+        .buttons .remove-all-button:hover {
+            background-color: #e0a602;
+            border-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .submit-button button {
+            background-color: rgba(10, 50, 43, 1); /* Green for Save Selected */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+
+        .submit-button button:hover {
+            background-color: rgba(15, 70, 60, 1);
+        }
+
+        .message {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* Updated link color and underline on hover */
+        .back-link a {
+            color: #1a73e8; /* Blue for link */
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease, text-decoration 0.3s ease;
+        }
+
+        .back-link a:hover {
+            color: #135ba1;
+            text-decoration: underline;
+        }
+
+        select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+    <div class="container">
+        <h2>Select Districts for Campaign</h2>
+
+<!-- Display Success and Error Messages -->
+{% if messages %}
+    {% for message in messages %}
+        {% if 'campaign_selection' in message.tags %}
+            <div class="message {{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+
+        <div class="region-select">
+            <form method="get">
+                <label for="region"><strong>Select Region:</strong></label>
+                <select name="region" onchange="this.form.submit()">
+                    <option value="">-- Select Region --</option>
+                    {% for region in regions %}
+                        <option value="{{ region.id }}" {% if selected_region and region.id == selected_region.id %}selected{% endif %}>
+                            {{ region.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        {% if selected_region %}
+            <div class="buttons">
+                <button type="button" class="select-all-button" onclick="selectAllPlaces()">Select All</button>
+                <button type="button" class="remove-all-button" onclick="unselectAllPlaces()">Remove All</button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="region" value="{{ selected_region.id }}">
+                <div class="places-list">
+                    <ul>
+                        {% for place in places %}
+                            <li>
+                                <label>
+                                    <input type="checkbox" name="places" value="{{ place.id }}" class="place-checkbox" 
+                                    {% if place.id|stringformat:"s" in selected_places_ids %}checked{% endif %}>
+                                    {{ place.name }}
+                                </label>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="submit-button" style="text-align: center;">
+                    <button type="submit">Save Selected Places</button>
+                </div>
+            </form>
+        {% endif %}
+
+        
+        <div class="back-link">
+            <a href="{% url 'manage_campaigns' %}?action=create">Back to Campaign Setup</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        function selectAllPlaces() {
+            var checkboxes = document.querySelectorAll('.place-checkbox');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = true;
+            });
+        }
+
+        function unselectAllPlaces() {
+            var checkboxes = document.querySelectorAll('.place-checkbox');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = false;
+            });
+        }
+    </script>
+{% endblock %}
